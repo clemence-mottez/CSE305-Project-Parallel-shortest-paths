@@ -310,6 +310,7 @@ int main() {
     int run_both_algo = 0; // 0 run both 1 and 2, 1 run dijkstra, 2 run delta stepping, 3 run delta-stepping w/ threads
     int nb_vertices = 100000; // To change
     int delta = 10; 
+    int num_threads = 500;
 
     bool print_dist = 0; // if want to print the resulting distances or not, it affects the running time so put 0 preferably
     bool print_graph = 0; // Whether or not want to print the graph
@@ -360,8 +361,6 @@ int main() {
     if (run_both_algo!=1 && run_both_algo!=2){
         // Run delta stepping algo
         std::cout << "\nResults with delta stepping w/ threads algo";
-        int delta = 10; 
-        int num_threads = 500;
         std::cout << "\nDelta = " << delta << std::endl;
         std::cout << "\nNb of threads = " << num_threads << std::endl;
         dist_delta_stepping_threads = delta_stepping_threads(0, g, delta, num_threads, print_dist);

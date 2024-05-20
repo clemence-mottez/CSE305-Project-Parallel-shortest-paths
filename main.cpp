@@ -424,6 +424,9 @@ void compare_distances(const std::vector<double>& dist1, const std::vector<doubl
 }
 
 
+
+
+
 int main() {
     int type_graph = 2;  // 0 for small graph, 1 for txt graph, 2 for random graph 
     string name_of_txt = "./graphs/rmat_medium.txt";

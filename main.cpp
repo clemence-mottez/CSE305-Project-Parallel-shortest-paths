@@ -218,6 +218,99 @@ std::vector<double> delta_stepping(int source, const Graph& graph, int delta, bo
 
 //__________________________________________________________________________________________________________________________________________________________________
 
+// ATTEMPT 1 : ton code Clémence
+
+// void relaxRequestsAux(const std::set<int>& requests, std::mutex &tentMutex, const Graph& graph, std::vector<double>& dist, std::vector<std::list<int>>& buckets, int delta){
+//     tentMutex.lock();
+//     for (int v : requests) {
+//         for (const auto& e : graph.get_adjacent(v)) {
+//             relax(v, e.first, e.second, dist, buckets, delta);
+//         }
+//     }
+//     tentMutex.unlock();
+// }
+
+
+
+// std::vector<double> parDeltaStepping(int source, const Graph& graph, double delta, int num_threads, bool print_dist) {
+//     int n = graph.size();
+//     std::vector<std::atomic<double>> dist(n);
+//     int b = graph.nb_buckets(delta);
+//     std::vector<std::priority_queue<int>> buckets(b);
+//     std::vector<std::thread> threads(num_threads);
+
+//     // Initialize distances
+//     for (int i = 0; i < n; ++i) {
+//         double dist[i];
+//         if (i==source){
+//             dist[i] = 0.;
+//         } else{
+//             dist[i] =  std::numeric_limits<double>::max();
+//         }
+//     }
+//     buckets[0].push(source);
+
+//     int current_bucket = 0;
+//     while (current_bucket < b) {
+//         if (buckets[current_bucket].empty()) {
+//             ++current_bucket;
+//             continue;
+//         }
+
+//         std::vector<std::pair<int, double>> requests;
+//         // Collect all requests
+//         while (!buckets[current_bucket].empty()) {
+//             int u = buckets[current_bucket].top();
+//             buckets[current_bucket].pop();
+//             for (const auto& e : graph.get_adjacent(u)) {
+//                 requests.emplace_back(u, e.first);
+//             }
+//         }
+
+//         // Divide requests among threads
+//         int per_thread = (requests.size() + num_threads - 1) / num_threads;
+//         for (int i = 0; i < num_threads && !requests.empty(); ++i) {
+//             int start_idx = i * per_thread;
+//             int end_idx = std::min(start_idx + per_thread, static_cast<int>(requests.size()));
+//             threads[i] = std::thread(relaxRequestsAux, std::vector<std::pair<int, double>>(requests.begin() + start_idx, requests.begin() + end_idx), dist.data(), buckets.data(), std::ref(delta), std::ref(current_bucket));
+//         }
+
+//         // Wait for threads to finish
+//         for (auto& t : threads) {
+//             if (t.joinable()) {
+//                 t.join();
+//             }
+//         }
+//     }
+
+//     std::vector<double> final_dists(n);
+//     for (int i = 0; i < n; ++i) {
+//         final_dists[i] = dist[i];
+//     }
+
+//     // Print the distances
+//     if (print_dist){
+//         for (int i = 0; i < n; ++i) {
+//             std::cout << "Distance from " << source << " to " << i << " is ";
+//             if (dist[i] == INF){
+//                 std::cout << "infinity" << std::endl;
+//             }
+//             else{
+//                 std::cout << dist[i] << std::endl;
+//             }
+//         }
+//     }
+//     return final_dists;
+    
+// }
+
+
+
+
+
+// ATTEMPT 2 : 
+
+
 
 // void relax_thread_function(int thread_id, const Graph& graph, std::vector<double>& dist, std::vector<std::list<int>>& buckets, int delta, std::atomic<bool>& stop) {
 //     while (!stop.load()) {
@@ -300,7 +393,10 @@ std::vector<double> delta_stepping(int source, const Graph& graph, int delta, bo
 
 
 
-//ATTEMPT 2 : 
+//ATTEMPT 3 : 
+
+
+
 // std::mutex mutex;
 // void relax_atomic(int u, int v, double weight, std::vector<std::atomic<double>>& dist, std::vector<std::list<int>>& buckets, int delta) {
 //     double newDist = dist[u].load(std::memory_order_relaxed) + weight;

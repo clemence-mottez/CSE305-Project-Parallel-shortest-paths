@@ -72,11 +72,17 @@ public:
     void gen_small_graph() {
         add_edge(0, 1, 10);
         add_edge(0, 3, 30);
-        add_edge(0, 4, 100);
+        add_edge(0, 4, 10);
         add_edge(1, 2, 50);
         add_edge(2, 4, 10);
         add_edge(3, 2, 20);
-        add_edge(3, 4, 60);
+        add_edge(3, 1, 6);
+        add_edge(4, 2, 10);
+        add_edge(4, 3, 30);
+        add_edge(4, 1, 10);
+        add_edge(5, 4, 10);
+        add_edge(5, 2, 20);
+        add_edge(5, 0, 6);
     }
 
 
@@ -97,6 +103,8 @@ public:
         }
 
         double weight = std::uniform_real_distribution<double>(min_weight, max_weight)(gen); //random weight
+        int w = std::ceil(weight);
+        //double weight = std::uniform_real_distribution<double>(min_weight, max_weight)(gen); //random weight
         add_edge(source, target, weight); // adds edge to the graph
         visited.insert(target); // marks the target node as visited
         }
@@ -648,43 +656,7 @@ void compare_distances(const std::vector<double>& dist1, const std::vector<doubl
 }
 
 
-
-
-
-int main() {
-    int type_graph = 2;  // 0 for small graph, 1 for txt graph, 2 for random graph 
-    std::string name_of_txt = "txt_graph.txt";
-    int run_all_algo = 0; // 0 run both 1 and 2, 1 run dijkstra, 2 run delta stepping, 3 run delta-stepping w/ threads
-    
-    int delta = 1; 
-    int num_threads = 10;
-    // for generating a random graph : 
-    int num_vertices = 10;
-    int num_edges = (num_vertices * (num_vertices - 1)) ;
-    int min_weight = 1;
-    int max_weight = 10;
-
-    bool print_dist = 1; // if want to print the resulting distances or not, it affects the running time so put 0 preferably
-    bool print_graph = 0; // Whether or not want to print the graph
-    
-    Graph g(num_vertices);
-
-    if (type_graph == 0){
-        std::cout << "\nGenerating a small graph:\n";
-        g.gen_small_graph(); 
-    }
-    else if (type_graph == 1){
-        std::cout << "\nGenerating a small graph via text file:\n";
-        //Graph g(6); 
-        g.gen_graph_from_txt(name_of_txt);
-    }
-    else if (type_graph == 2){
-        std::cout << "\nGenerating a random graph:\n";
-        g.gen_random_graph(num_vertices, num_edges, min_weight, max_weight);
-        //g.gen_random_graph(1000, 10000, 1, 10); // Generate a random graph with 5 vertices and 10 edges
-        //g.gen_random_graph(25, 50, 1, 100);
-    }
-
+int continue_main(Graph g, int run_all_algo, int delta, int print_graph, int print_dist){
     if (print_graph){
         g.print_graph(); 
     }
@@ -747,3 +719,50 @@ int main() {
 
     return 0;
 }
+
+
+
+
+
+int main() {
+    int type_graph = 2;  // 0 for small graph, 1 for txt graph, 2 for random graph 
+    std::string name_of_txt = "txt_graph.txt";
+    int run_all_algo = 0; // 0 run both 1 and 2, 1 run dijkstra, 2 run delta stepping, 3 run delta-stepping w/ threads
+    
+    int delta = 5; 
+    int num_threads = 10;
+
+    // for generating a random graph, type_graph = 2 
+    int num_vertices = 10;
+    int num_edges = (num_vertices * (num_vertices - 1)) ;
+    int min_weight = 1;
+    int max_weight = 20;
+
+    bool print_dist = 1; // if want to print the resulting distances or not, it affects the running time so put 0 preferably
+    bool print_graph = 0; // Whether or not want to print the graph
+    
+    
+
+    if (type_graph == 0){
+        std::cout << "\nGenerating a small graph:\n";
+        Graph g(6); //change with the nb of vertices in the fixed graph
+        g.gen_small_graph(); 
+        return continue_main(g, run_all_algo, delta, print_graph, print_dist);
+    }
+    else if (type_graph == 1){
+        std::cout << "\nGenerating a small graph via text file:\n";
+        Graph g(999); //change with the nb of vertices in the txt graph
+        g.gen_graph_from_txt(name_of_txt);
+        return continue_main(g, run_all_algo, delta, print_graph, print_dist);
+    }
+    else if (type_graph == 2){
+        std::cout << "\nGenerating a random graph:\n";
+        Graph g(num_vertices);
+        g.gen_random_graph(num_vertices, num_edges, min_weight, max_weight);
+        //g.gen_random_graph(1000, 10000, 1, 10); 
+        //g.gen_random_graph(25, 50, 1, 100);
+        return continue_main(g, run_all_algo, delta, print_graph, print_dist);
+    }
+
+}
+

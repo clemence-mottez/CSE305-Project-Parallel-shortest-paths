@@ -86,7 +86,7 @@ public:
     }
 
 
-    void gen_random_graph(int num_vertices, int num_edges, int min_weight, int max_weight) {
+    void gen_random_graph_double(int num_vertices, int num_edges, int min_weight, int max_weight) {
         if (num_edges > (num_vertices * (num_vertices - 1))) {
         // Too many edges for acyclic graph
             std::cout << "Number of edges exceeds limit for acyclic graph" << std::endl;
@@ -103,8 +103,28 @@ public:
         }
 
         double weight = std::uniform_real_distribution<double>(min_weight, max_weight)(gen); //random weight
-        int w = std::ceil(weight);
-        //double weight = std::uniform_real_distribution<double>(min_weight, max_weight)(gen); //random weight
+        add_edge(source, target, weight); // adds edge to the graph
+        visited.insert(target); // marks the target node as visited
+        }
+    }
+
+        void gen_random_graph_int(int num_vertices, int num_edges, int min_weight, int max_weight) {
+        if (num_edges > (num_vertices * (num_vertices - 1))) {
+        // Too many edges for acyclic graph
+            std::cout << "Number of edges exceeds limit for acyclic graph" << std::endl;
+        }
+        std::set<int> visited; //set to keep track of visited nodes to avoid cycles
+
+        for (int i = 0; i < num_edges; i++) {
+        int source = std::uniform_int_distribution<int>(0, num_vertices - 1)(gen); //pick a random source
+        int target;
+
+        // finding a valid target 
+        while (visited.count(target) > 0 && source != target) {
+            target = std::uniform_int_distribution<int>(0, num_vertices - 1)(gen);
+        }
+
+        int weight = std::uniform_int_distribution<int>(min_weight, max_weight)(gen); //random weight
         add_edge(source, target, weight); // adds edge to the graph
         visited.insert(target); // marks the target node as visited
         }
@@ -735,7 +755,7 @@ int main() {
     // for generating a random graph, type_graph = 2 
     int num_vertices = 10;
     int num_edges = (num_vertices * (num_vertices - 1)) ;
-    int min_weight = 1;
+    int min_weight = 1; //positive weights
     int max_weight = 20;
 
     bool print_dist = 1; // if want to print the resulting distances or not, it affects the running time so put 0 preferably
@@ -758,7 +778,7 @@ int main() {
     else if (type_graph == 2){
         std::cout << "\nGenerating a random graph:\n";
         Graph g(num_vertices);
-        g.gen_random_graph(num_vertices, num_edges, min_weight, max_weight);
+        g.gen_random_graph_int(num_vertices, num_edges, min_weight, max_weight);
         //g.gen_random_graph(1000, 10000, 1, 10); 
         //g.gen_random_graph(25, 50, 1, 100);
         return continue_main(g, run_all_algo, delta, print_graph, print_dist);

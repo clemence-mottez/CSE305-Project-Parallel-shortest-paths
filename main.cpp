@@ -676,10 +676,29 @@ void compare_distances(const std::vector<double>& dist1, const std::vector<doubl
 }
 
 
-int continue_main(Graph g, int run_all_algo, int delta, int print_graph, int print_dist){
+int continue_main(Graph g, int run_algo, int delta, int print_graph, int print_dist, int num_threads){
     if (print_graph){
         g.print_graph(); 
     }
+
+    double t1 = 0;
+    double t2 = 0;
+    double t3 = 0;
+    std::vector<double> dist_dijkstra;
+    std::vector<double> dist_delta_stepping;
+    std::vector<double> dist_delta_stepping_threads;
+
+    if (run_algo == 1 || run_algo == 4 || run_algo == 5 || run_algo == 0){// Run dijkstra algo
+        std::cout << "\nResults with Dijkstra algo\n";
+        std::chrono::steady_clock::time_point begin_dijkstra = std::chrono::steady_clock::now();
+        dist_dijkstra = dijkstra(0, g, print_dist);
+        std::chrono::steady_clock::time_point end_dijkstra = std::chrono::steady_clock::now();
+        t1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_dijkstra - begin_dijkstra).count() ;
+        std::cout << "Total time with Dijkstra: " << t1 << " ms" << std::endl;
+
+    }
+
+    /*
     std::chrono::steady_clock::time_point begin_dijkstra = std::chrono::steady_clock::now();
     std::vector<double> dist_dijkstra;
     if (run_all_algo!=2 && run_all_algo!=3){
@@ -689,7 +708,18 @@ int continue_main(Graph g, int run_all_algo, int delta, int print_graph, int pri
     }
     std::chrono::steady_clock::time_point end_dijkstra = std::chrono::steady_clock::now();
     std::cout << "Total time : " << std::chrono::duration_cast<std::chrono::milliseconds>(end_dijkstra - begin_dijkstra).count() << " ms" << std::endl;
+    */
 
+    if (run_algo == 2 || run_algo == 4 || run_algo == 6 || run_algo == 0){ // Run delta-stapping
+        std::cout << "\nResults with delta stepping algo, delta = " << delta << std::endl;
+        std::chrono::steady_clock::time_point begin_delta_stepping = std::chrono::steady_clock::now();
+        dist_delta_stepping = delta_stepping(0, g, delta, print_dist);
+        std::chrono::steady_clock::time_point end_delta_stepping = std::chrono::steady_clock::now();
+        t2 = std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping - begin_delta_stepping).count();
+        std::cout << "Total time with Delta stepping: " << t2 << " ms" << std::endl;
+
+    }
+    /*
     std::chrono::steady_clock::time_point begin_delta_stepping = std::chrono::steady_clock::now();
     std::vector<double> dist_delta_stepping;
     if (run_all_algo!=1 && run_all_algo!=3){
@@ -697,9 +727,22 @@ int continue_main(Graph g, int run_all_algo, int delta, int print_graph, int pri
         std::cout << "\nResults with delta stepping algo";
         std::cout << "\nDelta = " << delta << std::endl;
         dist_delta_stepping = delta_stepping(0, g, delta, print_dist);
+        
     }
     std::chrono::steady_clock::time_point end_delta_stepping = std::chrono::steady_clock::now();
     std::cout << "Total time : " << std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping - begin_delta_stepping).count() << " ms" << std::endl;
+    */
+
+    if (run_algo == 3 || run_algo == 5 || run_algo == 6 || run_algo == 0){ // Run delta-stepping threads
+        std::cout << "\nResults with delta stepping threads algo, delta = " << delta << " , nb of threads = " << num_threads << std::endl;
+        std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
+        dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
+        std::chrono::steady_clock::time_point end_delta_stepping_threads = std::chrono::steady_clock::now();
+        t3 = std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
+        std::cout << "Total time with Delta stepping threads: " << t3 << " ms" << std::endl;
+
+    }
+
     /*
     std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
     std::vector<double> dist_delta_stepping_threads;
@@ -714,28 +757,30 @@ int continue_main(Graph g, int run_all_algo, int delta, int print_graph, int pri
     std::cout << "Total time : " << std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() << " ms" << std::endl;
     */
 
-    if (run_all_algo == 0){
-        std::cout << "\n\nComparison of algorithms";
-        double t1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_dijkstra - begin_dijkstra).count();
-        double t2 = std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping - begin_delta_stepping).count();
-       // double t3 = std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count();
-        double speed_up_1 = t1/t2; 
-       // double speed_up_2 = t1/t3; 
-       // double speed_up_3 = t2/t3; 
+    //comparison of algo : 
 
-        std::cout << "\n\nTime Dijkstra: "<<t1 << "ms" << std::endl;
-        std::cout << "Time delta stepping: "<<t2 << "ms" << std::endl;
-      //  std::cout << "Time delta stepping threads: "<<t3 << "ms" << std::endl;
+    if (run_algo == 4 || run_algo == 0){// compare dijkstra & delta-stepping: 
+        std::cout << "\n\nComparing Dijkstra / delta-stepping "<< std::endl;
+        double speed_up = t1/t2; 
+        std::cout << "\n\nSpeed up Dijkstra / delta-stepping: " << speed_up << std::endl;
 
-        std::cout << "\n\nSpeed up Dijkstra/delta-stepping: " << speed_up_1 << std::endl;
-      //  std::cout << "Speed up Dijkstra/delta-stepping-threads: " << speed_up_2 << std::endl;
-       // std::cout << "Speed up delta-stepping/delta-stepping-threads: " << speed_up_3 << std::endl;
-        
-        std::cout << "\n\nCompare results Dijkstra/delta-stepping "<< std::endl;
         compare_distances(dist_dijkstra, dist_delta_stepping);
-    //    std::cout << "\nCompare results delta-stepping/delta-stepping-threads "<< std::endl;
-     //   compare_distances(dist_delta_stepping, dist_delta_stepping_threads);
     }
+
+    if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
+        std::cout << "\n\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
+        double speed_up = t1/t3; 
+        std::cout << "\n\nSpeed up Dijkstra / delta-stepping threads: " << speed_up << std::endl;
+        compare_distances(dist_dijkstra, dist_delta_stepping_threads);
+    }
+
+    if (run_algo == 6 || run_algo == 0){// compare delta-stepping & delta-stepping threads: 
+        std::cout << "\n\nComparing delta-stepping / delta-stepping threads "<< std::endl;
+        double speed_up = t2/t3; 
+        std::cout << "\n\nSpeed up delta-stepping / delta-stepping threads: " << speed_up << std::endl;
+        compare_distances(dist_delta_stepping, dist_delta_stepping_threads);
+    }
+
 
     return 0;
 }
@@ -745,9 +790,11 @@ int continue_main(Graph g, int run_all_algo, int delta, int print_graph, int pri
 
 
 int main() {
-    int type_graph = 2;  // 0 for small graph, 1 for txt graph, 2 for random graph 
+    int type_graph = 1;  // 0 for small graph, 1 for txt graph, 2 for random graph 
     std::string name_of_txt = "txt_graph.txt";
-    int run_all_algo = 0; // 0 run both 1 and 2, 1 run dijkstra, 2 run delta stepping, 3 run delta-stepping w/ threads
+
+
+    int run_algo = 4; // 1 : dijkstra ; 2 : delta-stepping ; 3 : DS-threads ; 4 : compare dijkstra & DS ; 5 : compare dijkstra & DS threads ; 6 : compare DS & DS threads ; 0 : compare all 
     
     int delta = 5; 
     int num_threads = 10;
@@ -767,13 +814,13 @@ int main() {
         std::cout << "\nGenerating a small graph:\n";
         Graph g(6); //change with the nb of vertices in the fixed graph
         g.gen_small_graph(); 
-        return continue_main(g, run_all_algo, delta, print_graph, print_dist);
+        return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
     }
     else if (type_graph == 1){
         std::cout << "\nGenerating a small graph via text file:\n";
         Graph g(999); //change with the nb of vertices in the txt graph
         g.gen_graph_from_txt(name_of_txt);
-        return continue_main(g, run_all_algo, delta, print_graph, print_dist);
+        return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
     }
     else if (type_graph == 2){
         std::cout << "\nGenerating a random graph:\n";
@@ -781,7 +828,7 @@ int main() {
         g.gen_random_graph_int(num_vertices, num_edges, min_weight, max_weight);
         //g.gen_random_graph(1000, 10000, 1, 10); 
         //g.gen_random_graph(25, 50, 1, 100);
-        return continue_main(g, run_all_algo, delta, print_graph, print_dist);
+        return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
     }
 
 }

@@ -107,10 +107,10 @@ Number of different values: 0
 Comparing Dijkstra / delta-stepping threads  
 Speed up: 0.3  
 Number of different values: 0  
-```  
+    
 Comparing delta-stepping / delta-stepping threads  
 Speed up: 0.4   
 Number of different values: 0  
-
+```
 
 

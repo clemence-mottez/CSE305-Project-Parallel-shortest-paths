@@ -50,7 +50,7 @@ int min_weight = min weight (>0 positive weights)
 int max_weight = max weight  
 
 ### What is should give you?  
-For example when running ```./test 0 0 5 6 1 1``` (running on a small existing graph, all the programs, with delta = 5, nb of threads = 6, printing the resulting distances and the graph):  
+For example when running ```./test 0 0 2 10 1 1``` (running on a small existing graph, all the programs, with delta = 2, nb of threads = 10, printing the resulting distances and the graph):  
 ```
 Generating a small graph  
 Vertex 0 has edges to:  
@@ -82,34 +82,30 @@ Distance from 0 to 4 is 6
 Distance from 0 to 5 is infinity  
 Total time with Dijkstra: 3 ms  
    
-Results with delta stepping algo, delta = 5  
+Results with delta stepping algo, delta = 10  
 Distance from 0 to 0 is 0  
 Distance from 0 to 1 is 7  
 Distance from 0 to 2 is 5  
 Distance from 0 to 3 is 3  
 Distance from 0 to 4 is 6  
 Distance from 0 to 5 is infinity  
-Total time with Delta stepping: 4 ms  
+Total time with Delta stepping: 3 ms  
   
-Results with delta stepping threads algo, delta = 5 , nb of threads = 6  
+Results with delta stepping threads algo, delta = 2 , nb of threads = 10  
 Distance from 0 to 0 is 0  
 Distance from 0 to 1 is 7  
 Distance from 0 to 2 is 5  
 Distance from 0 to 3 is 3  
 Distance from 0 to 4 is 6  
 Distance from 0 to 5 is infinity  
-Total time with Delta stepping threads: 10 ms  
+Total time with Delta stepping threads: 12 ms  
   
 Comparing Dijkstra / delta-stepping  
-Speed up: 0.75  
+Speed up: 1  
 Number of different values: 0  
-  
-Comparing Dijkstra / delta-stepping threads  
-Speed up: 0.3  
-Number of different values: 0  
-    
+
 Comparing delta-stepping / delta-stepping threads  
-Speed up: 0.4   
+Speed up: 0.25  
 Number of different values: 0  
 ```
 

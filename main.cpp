@@ -724,12 +724,12 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         compare_distances(dist_dijkstra, dist_delta_stepping);
     }
 
-    if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
-        std::cout << "\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
-        double speed_up = t1/t3; 
-        std::cout << "Speed up: " << speed_up << std::endl;
-        compare_distances(dist_dijkstra, dist_delta_stepping_threads);
-    }
+    // if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
+    //     std::cout << "\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
+    //     double speed_up = t1/t3; 
+    //     std::cout << "Speed up: " << speed_up << std::endl;
+    //     compare_distances(dist_dijkstra, dist_delta_stepping_threads);
+    // }
 
     if (run_algo == 6 || run_algo == 0){// compare delta-stepping & delta-stepping threads: 
         std::cout << "\nComparing delta-stepping / delta-stepping threads "<< std::endl;

@@ -69,9 +69,25 @@ class Graph {
 private:
     int vertices; // nb of vertices in the graph
     std::vector<std::list<Edge<T>>> adj_list; // adjacency list
+    int avgDegree; // Average degree of the graph (to compute)
+    
+    void computeAverageDegree() {
+        int totalEdges = 0;
+        for (const auto& list : adj_list) {
+            totalEdges += list.size();
+        }
+        avgDegree = vertices ? std::round(static_cast<double>(totalEdges) / vertices) : 0;
+    }
+
 
 public:
-    Graph(int n) : vertices(n), adj_list(n) {}
+    // Graph(int n) : vertices(n), adj_list(n) {}
+
+    Graph(int n) : vertices(n), adj_list(n), avgDegree(0) {
+        if (vertices > 0) {
+            computeAverageDegree();
+        }
+    }
 
     // Get the size of the graph (nb of vertices)
     int size() const {
@@ -156,6 +172,23 @@ public:
     }
 
 
+    int suggestOptimalNumberOfThreads() const {
+        int numPhysicalCores = std::thread::hardware_concurrency();
+        int suggestedThreads = numPhysicalCores; 
+
+        // increase threads if the graph is large and dense
+        if (vertices >= 1000 && avgDegree >= 10) {
+            suggestedThreads = std::min(2 * numPhysicalCores, vertices / 50);
+        }
+        std::cout<<avgDegree<<std::endl;
+        // Of reduce number of thread if the graph is sparse
+        if (avgDegree < 5) {
+            suggestedThreads = std::max(1, numPhysicalCores / 2); 
+        }
+
+        return suggestedThreads;
+    }
+
 
     // Generate a small and basic graph
     void gen_small_graph_int() {
@@ -190,6 +223,7 @@ public:
         add_edge(5, 0, 6.);
     }
 
+    
     void gen_random_graph(int num_vertices, int num_edges, int min_weight, int max_weight) {
         if (num_edges > (num_vertices * (num_vertices - 1))) {
         // Too many edges for acyclic graph
@@ -260,7 +294,7 @@ public:
 
 
 
-//called by relaxRequests
+// called by relaxRequests
 // updates the tentative distance of node v (of neighbor u) if a shorter path is discovered
 template <typename T>
 void relax(int u, int v, T weight, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
@@ -325,10 +359,13 @@ std::vector<T> delta_stepping(int source, const Graph<T>& graph, int delta, bool
                     relax(u, e.dest, e.weight, dist, buckets, delta);
                 }
             }
+
+            // Relax light edges
             // Handle reinsertion here using findRequests and relaxRequests
             auto lightRequests = findRequests(R, graph, delta, dist, true);
             relaxRequests(lightRequests, graph, dist, buckets, delta);
-
+            
+            // Relax heavy edges
             auto heavyRequests = findRequests(R, graph, delta, dist, false);
             relaxRequests(heavyRequests, graph, dist, buckets, delta);
         }
@@ -353,87 +390,90 @@ std::vector<T> delta_stepping(int source, const Graph<T>& graph, int delta, bool
 
 
 
+// Deletion and edge relaxation for an entire bucket can be done in parallel and in arbitrary order 
+// as long as an individual relaxation is atomic, i.e., the relaxations for a particular node are done sequentially
 
-//called by relaxRequests
-// updates the tentative distance of node v (of neighbor u) if a shorter path is discovered
-// template <typename T>
-// void relaxPar(int u, int v, T weight, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
-//     T newDist = dist[u] + weight; //distance through neighbor
-//     if (newDist < dist[v]) { 
-//         if (dist[v] != INT_MAX) {  //new shortest path was found
-//             int oldBucketIdx = static_cast<int>(dist[v] / delta);
-//             buckets[oldBucketIdx].remove(v); // remove v from its current bucket
-//         }
-//         dist[v] = newDist;  // update new distance
-//         int newBucketIdx = static_cast<int>(newDist / delta);
-//         buckets[newBucketIdx].push_back(v); // assign v to a new bucket
-//     }
-// }
-
-
-
-// // do relaxations, may move nodes between buckets
-// template <typename T>
-// void relaxRequestsPar(const std::set<int>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
-//     for (int v : requests) {
-//         for (const auto& e : graph.get_adjacent(v)) {
-//             relaxPar(v, e.dest, e.weight, dist, buckets, delta);
-//         }
-//     }
-// }
-
-
+// relaxations for a particular node are done sequentially
+// we use a mutex to ensure that updates to the distance vector and bucket lists are atomic
 template <typename T>
 void relaxPar(int u, int v, T weight, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& m) {
-    T newDist = dist[u] + weight;
-    if (newDist < dist[v]) {
-        std::lock_guard<std::mutex> lock(m);
-        if (dist[v] != INT_MAX) {
-            int oldBucketIdx = static_cast<int>(dist[v] / delta);
-            buckets[oldBucketIdx].remove(v);
-        }
-        dist[v] = newDist;
-        int newBucketIdx = static_cast<int>(newDist / delta);
-        buckets[newBucketIdx].push_back(v);
-    }
+    std::unique_lock<std::mutex> lock(m);
+    relax(u, v, weight, dist, buckets, delta);
+    lock.unlock();
 }
 
 
 
-
+// edge relaxation for an entire bucket can be done in parallel so we use threads
+// we use multiple threads to process the requests and a mutex to manage shared resources safely
 template <typename T>
-void relaxRequestsPar(const std::set<int>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
-    std::vector<std::thread> threads;
-    std::mutex mutex;
-    for (int v : requests) {
-        threads.push_back(std::thread([&, v]() {
-            for (const auto& e : graph.get_adjacent(v)) {
-                relaxPar(v, e.dest, e.weight, dist, buckets, delta, mutex);
-            }
-        }));
-    }
+void relaxRequestsPar(
+    const std::set<int>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, int nb_threads){
+    std::vector<std::thread> threads; 
+    std::mutex m; // mutex for synchronizing access to shared resources (dist and buckets)
     
+    int batchSize = requests.size() / nb_threads; // compute size of each batch of requests to be processed by each thread
+
+    auto it = requests.begin(); // iterator to access elements in the set of requests
+
+    for (int i = 0; i < nb_threads; ++i) {
+        // start iterator for the current thread
+        auto start = std::next(it, i * batchSize);
+        // end iterator
+        auto end = (i == nb_threads - 1) ? requests.end() : std::next(start, batchSize);
+
+        threads.emplace_back([&graph, start, end, &dist, &buckets, delta, &m](){
+            for (auto it = start; it != end; ++it) {
+                // iterate over all adjacent edges of the current node
+                for (const auto& e : graph.get_adjacent(*it)) {
+                    // perform relaxation step for current edge
+                    relaxPar(*it, e.dest, e.weight, dist, buckets, delta, m);
+                }
+            }
+        });
+    }
     // wait for threads
-    for (std::thread& t : threads) {
-        if (t.joinable()) {
-            t.join();
-        }
+    for (auto& t : threads) {
+        t.join();
     }
 }
 
 
+// Previous version for relaxRequestsPar that might work better?
+// // edge relaxation for an entire bucket can be done in parallel so we use threads
+// template <typename T>
+// void relaxRequestsPar(const std::set<int>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
+//     std::vector<std::thread> threads;
+//     std::mutex mutex;
+//     for (int v : requests) {
+//         threads.push_back(std::thread([&, v]() {
+//             for (const auto& e : graph.get_adjacent(v)) {
+//                 relaxPar(v, e.dest, e.weight, dist, buckets, delta, mutex);
+//             }
+//         }));
+//     }
+    
+//     // wait for threads
+//     for (std::thread& t : threads) {
+//         if (t.joinable()) {
+//             t.join();
+//         }
+//     }
+// }
 
+
+
+// Previous version that parallelize less but seems to run in less time
 template <typename T>
 std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
     int n = graph.size();
     std::vector<T> dist(n, INT_MAX);
     int b = graph.nb_buckets(delta);
-    //int b = int(ceil(INT_MAX / delta)) + 1;
     std::vector<std::list<int>> buckets(b); 
     std::mutex mutex;
 
     dist[source] = 0;
-    buckets[0].push_back(source); // Insert source node with distance 0
+    buckets[0].push_back(source); // insert source node with distance 0
 
     for (int i = 0; i < buckets.size(); ++i) {
         while (!buckets[i].empty()) {   
@@ -446,12 +486,14 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
                 }
             }
 
+            // Relax light edges in parallel
             // Handle reinsertion here using findRequests and relaxRequests
             auto lightRequests = findRequests(R, graph, delta, dist, true);
-            relaxRequestsPar(lightRequests, graph, dist, buckets, delta);
-
+            relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
+            
+            // Relax heavy edges in parallel
             auto heavyRequests = findRequests(R, graph, delta, dist, false);
-            relaxRequestsPar(heavyRequests, graph, dist, buckets, delta);
+            relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
         }
     }
 
@@ -471,7 +513,73 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
     return dist;
 }
 
+// // More parallelize but takes more time to work
+// template <typename T>
+// std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
+//     int n = graph.size();
+//     std::vector<T> dist(n, INT_MAX);
+//     int b = graph.nb_buckets(delta);
+//     std::vector<std::list<int>> buckets(b); 
+//     std::mutex mutex;
 
+//     dist[source] = 0;
+//     buckets[0].push_back(source); // insert source node with distance 0
+
+//     for (int i = 0; i < buckets.size(); ++i) {
+//         while (!buckets[i].empty()) {
+            
+//             std::list<int> R = move(buckets[i]);
+
+//             std::vector<std::thread> threads;
+//             auto start_iter = R.begin();
+
+//             int num_nodes_per_thread = R.size() / nb_threads;
+//             int remainder = R.size() % nb_threads;
+
+//             for (int t = 0; t < nb_threads; ++t) {
+//                 int num_nodes_this_thread = num_nodes_per_thread + (t < remainder ? 1 : 0);
+//                 auto end_iter = std::next(start_iter, num_nodes_this_thread);
+
+//                 threads.emplace_back([&graph, &dist, &buckets, &mutex, delta, start_iter, end_iter]() {
+//                     for (auto it = start_iter; it != end_iter; ++it) {
+//                         int u = *it;
+//                         for (const auto& e : graph.get_adjacent(u)) {
+//                             relaxPar(u, e.dest, e.weight, dist, buckets, delta, mutex);
+//                         }
+//                     }
+//                 });
+
+//                 start_iter = end_iter;
+//             }
+
+//             for (auto& thread : threads) {
+//                 thread.join();
+//             }
+
+//             // Relax light edges in parallel
+//             auto lightRequests = findRequests(R, graph, delta, dist, true);
+//             relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
+            
+//             // Relax heavy edges in parallel
+//             auto heavyRequests = findRequests(R, graph, delta, dist, false);
+//             relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
+//         }
+//     }
+
+//     // Print the distances
+//     if (print_dist){
+//         for (int i = 0; i < n; ++i) {
+//             std::cout << "Distance from " << source << " to " << i << " is ";
+//             if (dist[i] == INT_MAX) {
+//                 std::cout << "infinity" << std::endl;
+//             } else {
+//                 std::cout << dist[i] << std::endl;
+//             }
+//         }
+//     }
+
+//     return dist;
+// }
 
 //______________________________________________________________________________________________________________________________
 
@@ -635,23 +743,23 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
 
 int main() {
-    int type_graph = 1;  // 0 for small graph, 1 for txt graph, 2 for random graph 
-    std::string name_of_txt = "txt_graph_10000.txt";
+    int type_graph = 2;  // 0 for small graph, 1 for txt graph, 2 for random graph 
+    std::string name_of_txt = "txt_graph_100000.txt";
 
 
     int run_algo = 0; // 1 : dijkstra ; 2 : delta-stepping ; 3 : DS-threads ; 4 : compare dijkstra & DS ; 5 : compare dijkstra & DS threads ; 6 : compare DS & DS threads ; 0 : compare all 
     
-    // int delta = 10; 
-    int num_threads = 20;
+    int delta = 20; // = 0 if want to use computed value, or = value if want a specific value
+    int num_threads = 10; // = 0 if want to use computed value, or = value if want a specific value
 
     // for generating a random graph, type_graph = 2 
-    int num_vertices = 10000;
-    int num_edges =  100000; //(num_vertices * (num_vertices - 1)) ;
+    int num_vertices = 1000;
+    int num_edges =  10000; //(num_vertices * (num_vertices - 1)) ;
     int min_weight = 1; //positive weights
     int max_weight = 50;
 
     bool print_dist = 0; // if want to print the resulting distances or not, it affects the running time so put 0 preferably
-    bool print_graph = 1; // Whether or not want to print the graph
+    bool print_graph = 0; // Whether or not want to print the graph
     
 
     if (type_graph == 0){
@@ -659,13 +767,23 @@ int main() {
         if (run_algo == 2 || run_algo == 3 || run_algo ==  6 ){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
             Graph<double> g(6); //change with the nb of vertices in the fixed graph
             g.gen_small_graph_real();
-            int delta = g.findDelta();
+            if (delta==0){
+                delta = g.findDelta();
+            }
+            if (num_threads==0){
+                num_threads = g.suggestOptimalNumberOfThreads();
+            }
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
         } 
         else {
             Graph<int> g(6);
             g.gen_small_graph_int();
-            int delta = g.findDelta();
+            if (delta==0){
+                delta = g.findDelta();
+            }
+            if (num_threads==0){
+                num_threads = g.suggestOptimalNumberOfThreads();
+            }
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads); 
         }
     }
@@ -673,15 +791,25 @@ int main() {
     else if (type_graph == 1){
         std::cout << "\nGenerating a graph via text file\n";
         if (run_algo == 2 || run_algo == 3 || run_algo ==  6 ){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
-            Graph<double> g(10000);
+            Graph<double> g(100000);
             g.gen_graph_from_txt(name_of_txt);
-            int delta = g.findDelta();
+            if (delta==0){
+                delta = g.findDelta();
+            }
+            if (num_threads==0){
+                num_threads = g.suggestOptimalNumberOfThreads();
+            }
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
         } 
         else {
-            Graph<int> g(10000); //change with the nb of vertices in the txt graph
+            Graph<int> g(100000); //change with the nb of vertices in the txt graph
             g.gen_graph_from_txt(name_of_txt);
-            int delta = g.findDelta();
+            if (delta==0){
+                delta = g.findDelta();
+            }
+            if (num_threads==0){
+                num_threads = g.suggestOptimalNumberOfThreads();
+            }
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
         }
     }
@@ -691,13 +819,23 @@ int main() {
         if (run_algo == 2 || run_algo == 3 || run_algo ==  6 ){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
             Graph<double> g(num_vertices);
             g.gen_random_graph(num_vertices, num_edges, min_weight, max_weight);
-            int delta = g.findDelta();
+            if (delta==0){
+                delta = g.findDelta();
+            }
+            if (num_threads==0){
+                num_threads = g.suggestOptimalNumberOfThreads();
+            }
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
         } 
         else {
             Graph<int> g(num_vertices);
             g.gen_random_graph(num_vertices, num_edges, min_weight, max_weight);
-            int delta = g.findDelta();
+            if (delta==0){
+                delta = g.findDelta();
+            }
+            if (num_threads==0){
+                num_threads = g.suggestOptimalNumberOfThreads();
+            }
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
         }
     }

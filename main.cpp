@@ -20,6 +20,8 @@
 #include <future>
 #include <condition_variable>
 #include <functional>
+#include <cstdlib> 
+
 
 
 std::random_device rd;
@@ -176,13 +178,14 @@ public:
         int numPhysicalCores = std::thread::hardware_concurrency();
         int suggestedThreads = numPhysicalCores; 
 
+        std::cout<<numPhysicalCores<<std::endl;
+        std::cout<<vertices<<std::endl;
         // increase threads if the graph is large and dense
-        if (vertices >= 1000 && avgDegree >= 10) {
+        if (vertices >= 1000) {
             suggestedThreads = std::min(2 * numPhysicalCores, vertices / 50);
         }
-        std::cout<<avgDegree<<std::endl;
         // Of reduce number of thread if the graph is sparse
-        if (avgDegree < 5) {
+        if (vertices < 10) {
             suggestedThreads = std::max(1, numPhysicalCores / 2); 
         }
 
@@ -742,25 +745,79 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
 
 
-int main() {
-    int type_graph = 2;  // 0 for small graph, 1 for txt graph, 2 for random graph 
-    std::string name_of_txt = "txt_graph_100000.txt";
+// For all type of graphs
+// int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph 
+// bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably
+// bool print_graph = whether or not want to print the graph
+// int run_algo = 1 : dijkstra ; 2 : delta-stepping ; 3 : DS-threads ; 4 : compare dijkstra & DS ; 5 : compare dijkstra & DS threads ; 6 : compare DS & DS threads ; 0 : compare all 
+// int delta = 0 if want to use computed value, or = value if want a specific value
+// int num_threads = 0 if want to use computed value, or = value if want a specific value 
+
+// For txt graph
+// std::string name_of_txt = "txt_graph_1000.txt" for example
+// int num_vertices = nb vertices
+
+// For random graph
+// int num_vertices = nb vertices
+// int num_edges =  nb edges
+// int min_weight = min weight (>0 positive weights)
+// int max_weight = max weight
 
 
-    int run_algo = 0; // 1 : dijkstra ; 2 : delta-stepping ; 3 : DS-threads ; 4 : compare dijkstra & DS ; 5 : compare dijkstra & DS threads ; 6 : compare DS & DS threads ; 0 : compare all 
-    
-    int delta = 20; // = 0 if want to use computed value, or = value if want a specific value
-    int num_threads = 10; // = 0 if want to use computed value, or = value if want a specific value
 
-    // for generating a random graph, type_graph = 2 
-    int num_vertices = 1000;
-    int num_edges =  10000; //(num_vertices * (num_vertices - 1)) ;
-    int min_weight = 1; //positive weights
-    int max_weight = 50;
+// Examples to run:
 
-    bool print_dist = 0; // if want to print the resulting distances or not, it affects the running time so put 0 preferably
-    bool print_graph = 0; // Whether or not want to print the graph
-    
+// First run: g++ main.cpp -o test
+
+// Then:
+// For testing an existing small graph
+// ./test 0 [run_algo] [delta] [num_threads] [print_dist] [print_graph]
+// ./test 0 0 5 6 1 1
+
+// For testing a graph from a txt file
+// ./test 1 name_of_txt_file [num_vertices] [run_algo] [delta] [num_threads] [print_dist] [print_graph]
+// ./test 1 txt_graph_1000.txt 1000 0 0 0 0 0
+
+// For testing a random graph
+// ./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [delta] [num_threads] [print_dist] [print_graph]
+// ./test 2 1000 10000 1 50 0 10 10 0 0
+
+int main(int argc, char* argv[]) {
+
+    int type_graph = std::atoi(argv[1]);
+
+    std::string name_of_txt;
+    int num_vertices, num_edges, min_weight, max_weight;
+    int run_algo, delta, num_threads;
+    bool print_dist, print_graph;
+
+    switch (type_graph) {
+    case 0: // Small graph
+        break;
+
+    case 1: // txt graph
+        name_of_txt = argv[2];
+        num_vertices = std::atoi(argv[3]);
+        break;
+
+    case 2: // Random graph
+        num_vertices = std::atoi(argv[2]);
+        num_edges = std::atoi(argv[3]);
+        min_weight = std::atoi(argv[4]);
+        max_weight = std::atoi(argv[5]);
+        break;
+
+    default:
+        std::cerr << "Invalid type_graph, valid options are 0, 1, or 2." << std::endl;
+        return 1;
+    }
+
+    run_algo = std::atoi(argv[argc-5]);
+    delta = std::atoi(argv[argc-4]);
+    num_threads = std::atoi(argv[argc-3]);
+    print_dist = std::atoi(argv[argc-2]);
+    print_graph = std::atoi(argv[argc-1]);
+
 
     if (type_graph == 0){
         std::cout << "\nGenerating a small graph\n";
@@ -791,7 +848,7 @@ int main() {
     else if (type_graph == 1){
         std::cout << "\nGenerating a graph via text file\n";
         if (run_algo == 2 || run_algo == 3 || run_algo ==  6 ){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
-            Graph<double> g(100000);
+            Graph<double> g(num_vertices);
             g.gen_graph_from_txt(name_of_txt);
             if (delta==0){
                 delta = g.findDelta();
@@ -802,7 +859,7 @@ int main() {
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
         } 
         else {
-            Graph<int> g(100000); //change with the nb of vertices in the txt graph
+            Graph<int> g(num_vertices); //change with the nb of vertices in the txt graph
             g.gen_graph_from_txt(name_of_txt);
             if (delta==0){
                 delta = g.findDelta();

@@ -60,6 +60,7 @@
         "thread": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "future": "cpp"
     }
 }

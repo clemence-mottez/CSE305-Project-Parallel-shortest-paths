@@ -16,20 +16,20 @@ In this project, we implement and benchmark one of the most standard shortest pa
 We implement the algorithm, run it on a set of benchmarks, and compare it with non-parallel algorithms including single-thread ∆-stepping and Dijkstra.
 
 ### How to run the project
-First run: g++ main.cpp -o test  
+First run: ```g++ main.cpp -o test```  
 
 Then run either:   
 - For testing an existing small graph  
-./test 0 [run_algo] [delta] [num_threads] [print_dist] [print_graph]  
-For example you can run: ./test 0 0 5 6 1 1  
+```./test 0 [run_algo] [delta] [num_threads] [print_dist] [print_graph]```  
+For example you can run: ```./test 0 0 5 6 1 1```  
   
 - For testing a graph from a txt file  
-./test 1 name_of_txt_file [num_vertices] [run_algo] [delta] [num_threads] [print_dist] [print_graph]  
-For example you can run: ./test 1 txt_graph_1000.txt 1000 0 0 0 0 0  
+```./test 1 name_of_txt_file [num_vertices] [run_algo] [delta] [num_threads] [print_dist] [print_graph]```  
+For example you can run: ```./test 1 txt_graph_1000.txt 1000 0 0 0 0 0```  
 
 - For testing a random graph  
-./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [delta] [num_threads] [print_dist] [print_graph]  
-For example you can run: ./test 2 1000 10000 1 50 0 10 10 0 0  
+```./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [delta] [num_threads] [print_dist] [print_graph]```  
+For example you can run: ```./test 2 1000 10000 1 50 0 10 10 0 0```  
   
 The different arguments are explained bellow: 
 int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph   
@@ -50,8 +50,8 @@ int min_weight = min weight (>0 positive weights)
 int max_weight = max weight  
 
 ### What is should give you?  
-For example when running ./test 0 0 5 6 1 1 (running on a small existing graph, all the programs, with delta = 5, nb of threads = 6, printing the resulting distances and the graph):  
-
+For example when running ```./test 0 0 5 6 1 1``` (running on a small existing graph, all the programs, with delta = 5, nb of threads = 6, printing the resulting distances and the graph):  
+```
 Generating a small graph  
 Vertex 0 has edges to:  
  -> 1 with weight 10  
@@ -107,7 +107,7 @@ Number of different values: 0
 Comparing Dijkstra / delta-stepping threads  
 Speed up: 0.3  
 Number of different values: 0  
-  
+```  
 Comparing delta-stepping / delta-stepping threads  
 Speed up: 0.4   
 Number of different values: 0  

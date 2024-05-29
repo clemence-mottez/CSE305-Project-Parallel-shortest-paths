@@ -645,23 +645,23 @@ void compare_distances(const std::vector<T>& dist1, const std::vector<T>& dist2)
         return;
     }
 
-    double mse = 0;
+    //double mse = 0;
     int diff_count = 0;
     for (size_t i = 0; i < dist1.size(); i++) {
         if (dist1[i] != dist2[i]) {
             diff_count++;
-            if (dist1[i] != INT_MAX && dist2[i] != INT_MAX) { 
-                mse += pow(dist1[i] - dist2[i], 2);
-            }
+            // if (dist1[i] != INT_MAX && dist2[i] != INT_MAX) { 
+            //     mse += pow(dist1[i] - dist2[i], 2);
+            // }
         }
     }
 
-    if (diff_count > 0) {
-        mse /= diff_count; 
-    }
+    // if (diff_count > 0) {
+    //     mse /= diff_count; 
+    // }
 
     // Print MSE and nb of different values
-    std::cout << "Mean Squared Error: " << mse << std::endl;
+    // std::cout << "Mean Squared Error: " << mse << std::endl;
     std::cout << "Number of different values: " << diff_count << std::endl;
 }
 
@@ -718,23 +718,23 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
     //comparison of algorithms (results & runtimes): 
 
     if (run_algo == 4 || run_algo == 0){// compare dijkstra & delta-stepping: 
-        std::cout << "\n\nComparing Dijkstra / delta-stepping "<< std::endl;
+        std::cout << "\nComparing Dijkstra / delta-stepping "<< std::endl;
         double speed_up = t1/t2; 
-        std::cout << "\n\nSpeed up Dijkstra / delta-stepping: " << speed_up << std::endl;
+        std::cout << "Speed up: " << speed_up << std::endl;
         compare_distances(dist_dijkstra, dist_delta_stepping);
     }
 
     if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
-        std::cout << "\n\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
+        std::cout << "\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
         double speed_up = t1/t3; 
-        std::cout << "\n\nSpeed up Dijkstra / delta-stepping threads: " << speed_up << std::endl;
+        std::cout << "Speed up: " << speed_up << std::endl;
         compare_distances(dist_dijkstra, dist_delta_stepping_threads);
     }
 
     if (run_algo == 6 || run_algo == 0){// compare delta-stepping & delta-stepping threads: 
-        std::cout << "\n\nComparing delta-stepping / delta-stepping threads "<< std::endl;
+        std::cout << "\nComparing delta-stepping / delta-stepping threads "<< std::endl;
         double speed_up = t2/t3; 
-        std::cout << "\n\nSpeed up delta-stepping / delta-stepping threads: " << speed_up << std::endl;
+        std::cout << "Speed up: " << speed_up << std::endl;
         compare_distances(dist_delta_stepping, dist_delta_stepping_threads);
     }
 

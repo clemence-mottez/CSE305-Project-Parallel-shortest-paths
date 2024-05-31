@@ -20,27 +20,31 @@ First run: ```g++ main.cpp -o test```
 
 Then run either:   
 - For testing an existing small graph  
-```./test 0 [run_algo] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 0 0 5 6 1 1```  
+```./test 0 [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
+For example you can run: ```./test 0 1 0 5 6 1 1```  
   
 - For testing a graph from a txt file  
-```./test 1 name_of_txt_file [num_vertices] [run_algo] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 1 txt_graph_1000.txt 1000 0 0 0 0 0```  
+```./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
+For example you can run: ```./test 1 txt_graph_1000.txt 1000 0 0 0 0 0 0```  
 
 - For testing a random graph  
-```./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 2 1000 10000 1 50 0 10 10 0 0```  
+```./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo]  [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
+For example you can run: ```./test 2 1000 10000 1 50 0 1 10 10 0 0```  
   
 The different arguments are explained bellow: 
-int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph   
-bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably  
-bool print_graph = whether or not want to print the graph  
-int run_algo = 1 : dijkstra ; 2 : delta-stepping ; 3 : DS-threads ; 4 : compare dijkstra & DS ; 5 : compare dijkstra & DS threads ; 6 : compare DS & DS threads ; 0 : compare all   
-int delta = 0 if want to use computed value, or = value if want a specific value  
+int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph 
+int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all
+int type_weight = 0 int ; 1 double (positive edge weights) 
+int delta = 0 if want to use computed value, or = value if want a specific value
+int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value 
+bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably
+bool print_graph = whether or not want to print the graph
 int num_threads = 0 if want to use computed value, or = value if want a specific value   
   
 For txt graph  
 std::string name_of_txt = txt_graph_1000.txt for example  
+    -> for type_weight = 0 (integer weights), choose between txt_graph_1000.txt, txt_graph_10000.txt, txt_graph_100000.txt
+    -> for type_weight = 1 (positive real weights), choose between txt_graph_1000_d.txt, txt_graph_10000_d.txt, txt_graph_100000_d.txt
 int num_vertices = nb vertices  
 
 For random graph  
@@ -50,7 +54,7 @@ int min_weight = min weight (>0 positive weights)
 int max_weight = max weight  
 
 ### What is should give you?  
-For example when running ```./test 0 0 2 10 1 1``` (running on a small existing graph, all the programs, with delta = 2, nb of threads = 10, printing the resulting distances and the graph):  
+For example when running ```./test 0 0 0 2 10 1 1``` (running on a small existing graph, all the programs, integer weights, with delta = 2, nb of threads = 10, printing the resulting distances and the graph):  
 ```
 Generating a small graph  
 Vertex 0 has edges to:  

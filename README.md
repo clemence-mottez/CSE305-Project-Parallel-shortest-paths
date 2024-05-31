@@ -32,20 +32,20 @@ For example you can run: ```./test 1 txt_graph_1000.txt 1000 0 0 0 0 0 0```
 For example you can run: ```./test 2 1000 10000 1 50 0 1 10 10 0 0```  
   
 The different arguments are explained bellow: 
-int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph 
-int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all
-int type_weight = 0 int ; 1 double (positive edge weights) 
-int delta = 0 if want to use computed value, or = value if want a specific value
-int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value 
-bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably
-bool print_graph = whether or not want to print the graph
-int num_threads = 0 if want to use computed value, or = value if want a specific value   
+int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph     
+int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all    
+int type_weight = 0 int ; 1 double (positive edge weights)     
+int delta = 0 if want to use computed value, or = value if want a specific value    
+int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value     
+bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably    
+bool print_graph = whether or not want to print the graph     
+int num_threads = 0 if want to use computed value, or = value if want a specific value       
   
 For txt graph  
-std::string name_of_txt = txt_graph_1000.txt for example  
-    -> for type_weight = 0 (integer weights), choose between txt_graph_1000.txt, txt_graph_10000.txt, txt_graph_100000.txt   
-    -> for type_weight = 1 (positive real weights), choose between txt_graph_1000_d.txt, txt_graph_10000_d.txt, txt_graph_100000_d.txt
-int num_vertices = nb vertices  
+std::string name_of_txt = txt_graph_1000.txt for example      
+    -> for type_weight = 0 (integer weights), choose between txt_graph_1000.txt, txt_graph_10000.txt, txt_graph_100000.txt       
+    -> for type_weight = 1 (positive real weights), choose between txt_graph_1000_d.txt, txt_graph_10000_d.txt, txt_graph_100000_d.txt    
+int num_vertices = nb vertices    
 
 For random graph  
 int num_vertices = nb vertices  

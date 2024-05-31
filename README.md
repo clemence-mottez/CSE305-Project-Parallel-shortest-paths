@@ -43,7 +43,7 @@ int num_threads = 0 if want to use computed value, or = value if want a specific
   
 For txt graph  
 std::string name_of_txt = txt_graph_1000.txt for example  
-    -> for type_weight = 0 (integer weights), choose between txt_graph_1000.txt, txt_graph_10000.txt, txt_graph_100000.txt
+    -> for type_weight = 0 (integer weights), choose between txt_graph_1000.txt, txt_graph_10000.txt, txt_graph_100000.txt   
     -> for type_weight = 1 (positive real weights), choose between txt_graph_1000_d.txt, txt_graph_10000_d.txt, txt_graph_100000_d.txt
 int num_vertices = nb vertices  
 

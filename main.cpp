@@ -784,11 +784,11 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
 // For testing a graph from a txt file
 // ./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 1 txt_graph_1000.txt 1000 0 1 0 0 0 0
+// ./test 1 txt_graph_1000.txt 1000 0 0 0 0 0 0
 
 // For testing a random graph
 // ./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 2 1000 10000 1 50 0 0 10 10 0 0
+// ./test 2 1000 10000 1 50 0 1 10 10 0 0
 
 int main(int argc, char* argv[]) {
 

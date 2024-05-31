@@ -73,17 +73,20 @@ private:
     std::vector<std::list<Edge<T>>> adj_list; // adjacency list
     int avgDegree; // Average degree of the graph (to compute)
     
-    void computeAverageDegree() {
+    void computeAverageDegree() { // average number of edges connected to each vertex
         int totalEdges = 0;
         for (const auto& list : adj_list) {
             totalEdges += list.size();
         }
-        avgDegree = vertices ? std::round(static_cast<double>(totalEdges) / vertices) : 0;
+        if (vertices != 0){
+            avgDegree = std::round(static_cast<double>(totalEdges) / vertices);
+        } else{
+            avgDegree = 0;
+        }
     }
 
 
 public:
-    // Graph(int n) : vertices(n), adj_list(n) {}
 
     Graph(int n) : vertices(n), adj_list(n), avgDegree(0) {
         if (vertices > 0) {
@@ -227,7 +230,7 @@ public:
     }
 
     
-    void gen_random_graph(int num_vertices, int num_edges, int min_weight, int max_weight) {
+    void gen_random_graph(int type_weight , int num_vertices, int num_edges, int min_weight, int max_weight) {
         if (num_edges > (num_vertices * (num_vertices - 1))) {
         // Too many edges for acyclic graph
             std::cout << "Number of edges exceeds limit for acyclic graph" << std::endl;
@@ -244,7 +247,7 @@ public:
         }
 
         T weight; 
-        if (std::is_same<T, double>::value){
+        if (type_weight == 1){
             weight = std::uniform_real_distribution<double>(min_weight, max_weight)(gen); //random real positive weight
         } 
         else {
@@ -304,11 +307,11 @@ void relax(int u, int v, T weight, std::vector<T>& dist, std::vector<std::list<i
     T newDist = dist[u] + weight; //distance through neighbor
     if (newDist < dist[v]) { 
         if (dist[v] != INT_MAX) {  //new shortest path was found
-            int oldBucketIdx = static_cast<int>(dist[v] / delta);
+            int oldBucketIdx = static_cast<int>(std::floor(dist[v] / delta));
             buckets[oldBucketIdx].remove(v); // remove v from its current bucket
         }
         dist[v] = newDist;  // update new distance
-        int newBucketIdx = static_cast<int>(newDist / delta);
+        int newBucketIdx = static_cast<int>(std::floor(newDist / delta));
         buckets[newBucketIdx].push_back(v); // assign v to a new bucket
     }
 }
@@ -593,7 +596,6 @@ std::vector<T> dijkstra(int source, Graph<T>& graph, bool print_dist) {
     int n = graph.size();
     std::vector<T> dist(n, INT_MAX); 
     std::vector<bool> visited(n, false); 
-    //std::priority_queue<std::pair<int, T>, std::vector<std::pair<int, T>>, std::greater<std::pair<int, T>>> pq;
     std::priority_queue< Edge<T>, std::vector<Edge<T>>, CompareEdge<T>> pq;
 
     // Initialize priority queue with the source node
@@ -724,12 +726,13 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         compare_distances(dist_dijkstra, dist_delta_stepping);
     }
 
-    // if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
-    //     std::cout << "\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
-    //     double speed_up = t1/t3; 
-    //     std::cout << "Speed up: " << speed_up << std::endl;
-    //     compare_distances(dist_dijkstra, dist_delta_stepping_threads);
-    // }
+    //comparison does not seem to work here for some reason (run_algo == 5)
+    if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
+        std::cout << "\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
+        double speed_up = t1/t3; 
+        std::cout << "Speed up: " << speed_up << std::endl;
+        compare_distances(dist_dijkstra, dist_delta_stepping_threads);
+    }
 
     if (run_algo == 6 || run_algo == 0){// compare delta-stepping & delta-stepping threads: 
         std::cout << "\nComparing delta-stepping / delta-stepping threads "<< std::endl;
@@ -747,14 +750,19 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
 // For all type of graphs
 // int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph 
+// int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all
+// int type_weight = 0 int ; 1 double (positive edge weights) 
+// int delta = 0 if want to use computed value, or = value if want a specific value
+// int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value 
 // bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably
 // bool print_graph = whether or not want to print the graph
-// int run_algo = 1 : dijkstra ; 2 : delta-stepping ; 3 : DS-threads ; 4 : compare dijkstra & DS ; 5 : compare dijkstra & DS threads ; 6 : compare DS & DS threads ; 0 : compare all 
-// int delta = 0 if want to use computed value, or = value if want a specific value
-// int num_threads = 0 if want to use computed value, or = value if want a specific value 
+
 
 // For txt graph
 // std::string name_of_txt = "txt_graph_1000.txt" for example
+//    -> for type_weight = 0 (integer weights), choose between txt_graph_1000.txt, txt_graph_10000.txt, txt_graph_100000.txt
+//    -> for type_weight = 1 (positive real weights), choose between txt_graph_1000_d.txt, txt_graph_10000_d.txt, txt_graph_100000_d.txt
+
 // int num_vertices = nb vertices
 
 // For random graph
@@ -771,23 +779,23 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
 // Then:
 // For testing an existing small graph
-// ./test 0 [run_algo] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 0 0 5 6 1 1
+// ./test 0 [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
+// ./test 0 1 0 5 6 1 1
 
 // For testing a graph from a txt file
-// ./test 1 name_of_txt_file [num_vertices] [run_algo] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 1 txt_graph_1000.txt 1000 0 0 0 0 0
+// ./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
+// ./test 1 txt_graph_1000.txt 1000 0 1 0 0 0 0
 
 // For testing a random graph
-// ./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 2 1000 10000 1 50 0 10 10 0 0
+// ./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
+// ./test 2 1000 10000 1 50 0 0 10 10 0 0
 
 int main(int argc, char* argv[]) {
 
     int type_graph = std::atoi(argv[1]);
 
     std::string name_of_txt;
-    int num_vertices, num_edges, min_weight, max_weight;
+    int type_weight, num_vertices, num_edges, min_weight, max_weight;
     int run_algo, delta, num_threads;
     bool print_dist, print_graph;
 
@@ -812,7 +820,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    run_algo = std::atoi(argv[argc-5]);
+    run_algo = std::atoi(argv[argc-6]);
+    type_weight = std::atoi(argv[argc-5]);
     delta = std::atoi(argv[argc-4]);
     num_threads = std::atoi(argv[argc-3]);
     print_dist = std::atoi(argv[argc-2]);
@@ -821,7 +830,7 @@ int main(int argc, char* argv[]) {
 
     if (type_graph == 0){
         std::cout << "\nGenerating a small graph\n";
-        if (run_algo == 2 || run_algo == 3 || run_algo ==  6 ){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
+        if (type_weight == 1){ // creating a graph with real-valued positive edge weights
             Graph<double> g(6); //change with the nb of vertices in the fixed graph
             g.gen_small_graph_real();
             if (delta==0){
@@ -847,7 +856,11 @@ int main(int argc, char* argv[]) {
 
     else if (type_graph == 1){
         std::cout << "\nGenerating a graph via text file\n";
-        if (run_algo == 2 || run_algo == 3 || run_algo ==  6 ){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
+        if (type_weight == 1){ // creating a graph with real-valued positive edge weights
+            if (name_of_txt == "txt_graph_1000.txt" || name_of_txt == "txt_graph_10000.txt" || name_of_txt == "txt_graph_100000.txt"){
+                std::cout << "File Error : Please use a txt file with double eidge weights : txt_graph_1000_d.txt, txt_graph_10000_d.txt, txt_graph_100000_d.txt";
+                return 1;
+            }
             Graph<double> g(num_vertices);
             g.gen_graph_from_txt(name_of_txt);
             if (delta==0){
@@ -859,6 +872,10 @@ int main(int argc, char* argv[]) {
             return continue_main(g, run_algo, delta, print_graph, print_dist, num_threads);
         } 
         else {
+            if (name_of_txt == "txt_graph_1000_d.txt" || name_of_txt == "txt_graph_10000_d.txt" || name_of_txt == "txt_graph_100000_d.txt"){
+                std::cout << "File Error : Please use a txt file with integer edge weights : txt_graph_1000.txt, txt_graph_10000.txt, txt_graph_100000.txt";
+                return 1;
+            }
             Graph<int> g(num_vertices); //change with the nb of vertices in the txt graph
             g.gen_graph_from_txt(name_of_txt);
             if (delta==0){
@@ -873,9 +890,9 @@ int main(int argc, char* argv[]) {
 
     else if (type_graph == 2){
         std::cout << "\nGenerating a random graph\n";
-        if (run_algo == 2 || run_algo == 3 || run_algo ==  6 ){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
+        if (type_weight == 1){ // creating a graph with real-valued positive edge weights (run_algo does not call dijkstra)
             Graph<double> g(num_vertices);
-            g.gen_random_graph(num_vertices, num_edges, min_weight, max_weight);
+            g.gen_random_graph(type_weight, num_vertices, num_edges, min_weight, max_weight);
             if (delta==0){
                 delta = g.findDelta();
             }
@@ -886,7 +903,7 @@ int main(int argc, char* argv[]) {
         } 
         else {
             Graph<int> g(num_vertices);
-            g.gen_random_graph(num_vertices, num_edges, min_weight, max_weight);
+            g.gen_random_graph(type_weight, num_vertices, num_edges, min_weight, max_weight);
             if (delta==0){
                 delta = g.findDelta();
             }

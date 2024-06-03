@@ -25,18 +25,18 @@ For example you can run: ```./test 0 1 0 5 6 1 1```
   
 - For testing a graph from a txt file  
 ```./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 1 txt_graph_1000.txt 1000 0 0 0 0 0 0```  
+For example you can run: ```./test 1 ./txt_graphs/txt_graph_1000.txt 1000 0 0 0 0 0 0```  
 
 - For testing a random graph  
 ```./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo]  [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 2 1000 10000 1 50 0 1 10 10 0 0```  
+For example you can run: ```./test 2 1000 10000 1 50 0 1 0 10 0 0```  
   
 The different arguments are explained bellow:   
 int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph     
 int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all    
 int type_weight = 0 int ; 1 double (positive edge weights)     
 int delta = 0 if want to use computed value, or = value if want a specific value    
-int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value     
+int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value,  or = 1000 if wants multiple value of threads testing   
 bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably    
 bool print_graph = whether or not want to print the graph     
 int num_threads = 0 if want to use computed value, or = value if want a specific value       

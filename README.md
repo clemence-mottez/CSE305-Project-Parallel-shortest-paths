@@ -106,9 +106,8 @@ Total time with Delta stepping threads: 12 ms
   
 Comparing Dijkstra / delta-stepping  
 Speed up: 1  
-Number of different values: 0
-```
-
+Number of different values: 0  
+  
 Comparing delta-stepping / delta-stepping threads  
 Speed up: 0.25  
 Number of different values: 0  

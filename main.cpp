@@ -691,8 +691,8 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         std::chrono::steady_clock::time_point begin_dijkstra = std::chrono::steady_clock::now();
         dist_dijkstra = dijkstra(0, g, print_dist);
         std::chrono::steady_clock::time_point end_dijkstra = std::chrono::steady_clock::now();
-        t1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_dijkstra - begin_dijkstra).count() ;
-        std::cout << "Total time with Dijkstra: " << t1 << " ms" << std::endl;
+        t1 = std::chrono::duration_cast<std::chrono::microseconds>(end_dijkstra - begin_dijkstra).count() ;
+        std::cout << "Total time with Dijkstra: " << t1 << " micro seconds" << std::endl;
 
     }
 
@@ -701,8 +701,8 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         std::chrono::steady_clock::time_point begin_delta_stepping = std::chrono::steady_clock::now();
         dist_delta_stepping = delta_stepping(0, g, delta, print_dist);
         std::chrono::steady_clock::time_point end_delta_stepping = std::chrono::steady_clock::now();
-        t2 = std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping - begin_delta_stepping).count();
-        std::cout << "Total time with Delta stepping: " << t2 << " ms" << std::endl;
+        t2 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping - begin_delta_stepping).count();
+        std::cout << "Total time with Delta stepping: " << t2 << "  micro seconds" << std::endl;
 
     }
 
@@ -712,8 +712,8 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
         dist_delta_stepping_threads = delta_stepping_Par(0, g, delta, num_threads, print_dist);
         std::chrono::steady_clock::time_point end_delta_stepping_threads = std::chrono::steady_clock::now();
-        t3 = std::chrono::duration_cast<std::chrono::milliseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
-        std::cout << "Total time with Delta stepping threads: " << t3 << " ms" << std::endl;
+        t3 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
+        std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
 
     }
 

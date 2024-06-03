@@ -44,6 +44,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
     double t1 = 0;
     double t2 = 0;
     double t3 = 0;
+    double best_time = INF;
     std::vector<T> dist_dijkstra;
     std::vector<T> dist_delta_stepping;
     std::vector<T> dist_delta_stepping_threads;
@@ -71,13 +72,34 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
     }
 
     if (run_algo == 3 || run_algo == 5 || run_algo == 6 || run_algo == 0){ // Run delta-stepping threads
-        std::cout << "\nResults with delta stepping threads algo, delta = " << delta << " , nb of threads = " << num_threads << std::endl;
-        std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
-        // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
-        dist_delta_stepping_threads = delta_stepping_Par(0, g, delta, num_threads, print_dist);
-        std::chrono::steady_clock::time_point end_delta_stepping_threads = std::chrono::steady_clock::now();
-        t3 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
-        std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
+        if (num_threads == 1000){
+            int new_num_threads = 1;
+            int best_num_threads = 0;
+            while (new_num_threads<50){
+                std::cout << "\nResults with delta stepping threads algo, delta = " << delta << " , nb of threads = " << new_num_threads << std::endl;
+                std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
+                // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
+                dist_delta_stepping_threads = delta_stepping_Par(0, g, delta, new_num_threads, print_dist);
+                std::chrono::steady_clock::time_point end_delta_stepping_threads = std::chrono::steady_clock::now();
+                t3 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
+                if (t3 < best_time){
+                    best_time = t3;
+                    best_num_threads = new_num_threads;
+                }
+                std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
+                new_num_threads += 2;
+            }
+            std::cout << "\nBest results with delta stepping threads algo, delta = " << delta << " , best nb of threads = " << best_num_threads << " , best time = " << best_time << std::endl;
+        }
+        else {        
+            std::cout << "\nResults with delta stepping threads algo, delta = " << delta << " , nb of threads = " << num_threads << std::endl;
+            std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
+            // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
+            dist_delta_stepping_threads = delta_stepping_Par(0, g, delta, num_threads, print_dist);
+            std::chrono::steady_clock::time_point end_delta_stepping_threads = std::chrono::steady_clock::now();
+            t3 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
+            std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
+        }
 
     }
 
@@ -90,19 +112,38 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         compare_distances(dist_dijkstra, dist_delta_stepping);
     }
 
-    //comparison does not seem to work here for some reason (run_algo == 5)
-    if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
-        std::cout << "\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
-        double speed_up = t1/t3; 
-        std::cout << "Speed up: " << speed_up << std::endl;
-        compare_distances(dist_dijkstra, dist_delta_stepping_threads);
+    if (num_threads != 1000){
+        //comparison does not seem to work here for some reason (run_algo == 5)
+        if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
+            std::cout << "\nComparing Dijkstra / delta-stepping threads "<< std::endl; 
+            double speed_up = t1/t3; 
+            std::cout << "Speed up: " << speed_up << std::endl;
+            compare_distances(dist_dijkstra, dist_delta_stepping_threads);
+        }
+
+        if (run_algo == 6 || run_algo == 0){// compare delta-stepping & delta-stepping threads: 
+            std::cout << "\nComparing delta-stepping / delta-stepping threads "<< std::endl;
+            double speed_up = t2/t3; 
+            std::cout << "Speed up: " << speed_up << std::endl;
+            compare_distances(dist_delta_stepping, dist_delta_stepping_threads);
+        }
     }
 
-    if (run_algo == 6 || run_algo == 0){// compare delta-stepping & delta-stepping threads: 
-        std::cout << "\nComparing delta-stepping / delta-stepping threads "<< std::endl;
-        double speed_up = t2/t3; 
-        std::cout << "Speed up: " << speed_up << std::endl;
-        compare_distances(dist_delta_stepping, dist_delta_stepping_threads);
+    else{
+        //comparison does not seem to work here for some reason (run_algo == 5)
+        if (run_algo == 5 || run_algo == 0){// compare dijkstra & delta-stepping threads:
+            std::cout << "\nComparing Dijkstra / delta-stepping best number of threads "<< std::endl; 
+            double speed_up = t1/best_time; 
+            std::cout << "Speed up: " << speed_up << std::endl;
+            compare_distances(dist_dijkstra, dist_delta_stepping_threads);
+        }
+
+        if (run_algo == 6 || run_algo == 0){// compare delta-stepping & delta-stepping threads: 
+            std::cout << "\nComparing delta-stepping / delta-stepping best number of threads "<< std::endl;
+            double speed_up = t2/best_time; 
+            std::cout << "Speed up: " << speed_up << std::endl;
+            compare_distances(dist_delta_stepping, dist_delta_stepping_threads);
+        }
     }
 
     return 0;
@@ -117,7 +158,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 // int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all
 // int type_weight = 0 int ; 1 double (positive edge weights) 
 // int delta = 0 if want to use computed value, or = value if want a specific value
-// int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value 
+// int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value, or = 1000 if wants multiple value of threads testing
 // bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably
 // bool print_graph = whether or not want to print the graph
 
@@ -143,16 +184,18 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
 // Then:
 // For testing an existing small graph
-// ./test 0 [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
+// ./test 0 [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph] 
 // ./test 0 1 0 5 6 1 1
 
 // For testing a graph from a txt file
 // ./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 1 txt_graph_1000.txt 1000 0 0 0 0 0 0
+// ./test 1 ./txt_graphs/txt_graph_1000.txt 1000 0 0 0 0 0 0
 
 // For testing a random graph
 // ./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
 // ./test 2 1000 10000 1 50 0 1 10 10 0 0
+
+
 
 int main(int argc, char* argv[]) {
 

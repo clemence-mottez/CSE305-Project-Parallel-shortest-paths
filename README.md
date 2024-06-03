@@ -31,7 +31,7 @@ For example you can run: ```./test 1 txt_graph_1000.txt 1000 0 0 0 0 0 0```
 ```./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo]  [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
 For example you can run: ```./test 2 1000 10000 1 50 0 1 10 10 0 0```  
   
-The different arguments are explained bellow: 
+The different arguments are explained bellow:   
 int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph     
 int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all    
 int type_weight = 0 int ; 1 double (positive edge weights)     
@@ -106,7 +106,8 @@ Total time with Delta stepping threads: 12 ms
   
 Comparing Dijkstra / delta-stepping  
 Speed up: 1  
-Number of different values: 0  
+Number of different values: 0
+```
 
 Comparing delta-stepping / delta-stepping threads  
 Speed up: 0.25  

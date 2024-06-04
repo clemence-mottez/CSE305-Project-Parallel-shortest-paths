@@ -155,6 +155,47 @@ void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& grap
 
 
 
+template <typename T>
+std::vector<Edge<T>> findRequestsPar(const std::list<int>& Vprime, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight, int nb_threads) {
+    
+    std::vector<Edge<T>> requests;
+    std::mutex mutex;
+    size_t chunk_size = (Vprime.size() + nb_threads - 1) / nb_threads;
+    std::vector<std::thread> threads(nb_threads);
+
+    auto process_chunk = [&](int start, int end) {
+        for (int i = start; i < end; ++i) {
+            
+            auto it = std::next(Vprime.begin(), i);
+            int v = *it;
+            for (const auto& e : graph.get_adjacent(v)) {        
+                int w = e.dest; 
+                T weight = e.weight;                             
+                if ((isLight && weight <= delta) || (!isLight && weight > delta)) { 
+                    Edge<T> e(w, dist[v] + weight); 
+                    mutex.lock();        
+                    requests.push_back(e);  
+                    mutex.unlock();                     
+                }
+            }
+        }
+    };
+
+    for (int i = 0; i < nb_threads; ++i) {
+        int start = i * chunk_size;
+        int end = std::min((int)(start + chunk_size), (int)Vprime.size());
+        threads[i] = std::thread(process_chunk, start, end);
+    } 
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    return requests;
+}
+
+
+
 // Previous version for relaxRequestsPar
 // ONE THREAD PER REQUEST TO RELAX : OK FOR SMALL GRAPHS BUT OTHERWIZE TOO LONG
 // edge relaxation for an entire bucket can be done in parallel so we use threads
@@ -186,7 +227,7 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
     int b = graph.nb_buckets(delta);
     std::vector<std::list<int>> buckets(b); 
 
-    dist[source] = 0;                                                        // line 2
+    dist[source] = 0;                                                       // line 2
     buckets[0].push_back(source); // Insert source node with distance 0
 
     while (true){                                                           // line 3
@@ -194,13 +235,13 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
         if (i == -1) break;                                                 
         std::list<int> R ;                                                  // line 5
         while (!buckets[i].empty()) {                                       // line 6
-            std::vector<Edge<T>> lightRequests = findRequests(buckets[i], graph, delta, dist, true); // line 7
+            std::vector<Edge<T>> lightRequests = findRequestsPar(buckets[i], graph, delta, dist, true, nb_threads); // line 7
             // move elements of buckets[i] to the end of R, empties buckets[i] : 
             R.splice(R.end(), buckets[i])  ;                                // line 8 & 9
             relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);      // line 10
         }        
         // Relax heavy edges
-        std::vector<Edge<T>> heavyRequests = findRequests(R, graph, delta, dist, false);  // line 11
+        std::vector<Edge<T>> heavyRequests = findRequestsPar(R, graph, delta, dist, false, nb_threads);  // line 11
         relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);        // line 12
     }
 

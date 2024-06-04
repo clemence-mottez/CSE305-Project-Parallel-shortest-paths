@@ -201,11 +201,11 @@ public:
         // std::cout<<vertices<<std::endl;
         // increase threads if the graph is large and dense
         if (vertices >= 1000) {
-            suggestedThreads = std::min(2 * numPhysicalCores, vertices / 50);
+            suggestedThreads = 2 * numPhysicalCores;
         }
         // Of reduce number of thread if the graph is sparse
         if (vertices < 10) {
-            suggestedThreads = std::max(1, numPhysicalCores / 2); 
+            suggestedThreads = numPhysicalCores / 2; 
         }
 
         return suggestedThreads;
@@ -290,6 +290,27 @@ public:
                 throw std::invalid_argument("Invalid line format");
             }
             add_edge(u, v, weight);
+        }
+        
+        file.close();
+    }
+
+    void gen_graph_from_txt_without_weight(std::string filename) {
+        std::ifstream file(filename);
+        std::string line;
+
+        if (!file.is_open()) {
+            throw std::runtime_error("Could not open file");
+        }
+
+        while (std::getline(file, line)) {
+            std::istringstream iss(line);
+            int u, v;
+            T weight = 1;
+            if (!(iss >> u >> v)) {
+                throw std::invalid_argument("Invalid line format");
+            }
+            add_edge(u, v, 1);
         }
         
         file.close();

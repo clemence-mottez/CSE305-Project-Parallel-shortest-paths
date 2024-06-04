@@ -91,6 +91,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
             }
             std::cout << "\nBest results with delta stepping threads algo, delta = " << delta << " , best nb of threads = " << best_num_threads << " , best time = " << best_time << std::endl;
         }
+        
         else {        
             std::cout << "\nResults with delta stepping threads algo, delta = " << delta << " , nb of threads = " << num_threads << std::endl;
             std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
@@ -100,6 +101,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
             t3 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
             std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
         }
+        
 
     }
 

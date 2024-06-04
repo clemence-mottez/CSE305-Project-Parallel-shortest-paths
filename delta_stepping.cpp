@@ -1,19 +1,17 @@
 
 #include "graph.h"
 
-// called by relaxRequests
-// updates the tentative distance of node v (of neighbor u) if a shorter path is discovered
+// relax node u with new dist x
 template <typename T>
-void relax(int u, int v, T weight, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
-    T newDist = dist[u] + weight; //distance through neighbor
-    if (newDist < dist[v]) { 
-        if (dist[v] != INT_MAX) {  //new shortest path was found
-            int oldBucketIdx = static_cast<int>(std::floor(dist[v] / delta));
-            buckets[oldBucketIdx].remove(v); // remove v from its current bucket
+void relax(int w, T x, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
+    if (x < dist[w]) { 
+        if (dist[w] != INT_MAX) {  //new shortest path was found
+            int oldBucketIdx = static_cast<int>(std::floor(dist[w] / delta));
+            buckets[oldBucketIdx].remove(w); // remove v from its current bucket
         }
-        dist[v] = newDist;  // update new distance
-        int newBucketIdx = static_cast<int>(std::floor(newDist / delta));
-        buckets[newBucketIdx].push_back(v); // assign v to a new bucket
+        int newBucketIdx = static_cast<int>(std::floor(x / delta));
+        buckets[newBucketIdx].push_back(w); // assign v to a new bucket
+        dist[w] = x;  // update new distance
     }
 }
 
@@ -21,16 +19,15 @@ void relax(int u, int v, T weight, std::vector<T>& dist, std::vector<std::list<i
 // creates requests for the edges of type isLight and of the nodes in R
 // returns a set of edges
 template <typename T>
-std::set<int> findRequests(const std::list<int>& R, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight) {
-    std::set<int> requests;
-    for (int u : R) {
-        for (const auto& e : graph.get_adjacent(u)) {
-            int v = e.dest; 
-            T weight = e.weight;
+std::vector<Edge<T>> findRequests(const std::list<int>& Vprime, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight) {
+    std::vector<Edge<T>> requests;
+    for (int v : Vprime) {
+        for (const auto& e : graph.get_adjacent(v)) { 
+            int w = e.dest; 
+            T weight = e.weight;  // weight of edge from v to w 
             if ((isLight && weight <= delta) || (!isLight && weight > delta)) { // checks if e has the correct type : light or heavy
-                if (dist[u] + weight < dist[v]) { // found a new dist
-                    requests.insert(v);
-                }
+                Edge<T> e(w, dist[v] + weight);
+                requests.push_back(e);
             }
         }
     }
@@ -39,50 +36,62 @@ std::set<int> findRequests(const std::list<int>& R, const Graph<T>& graph, int d
 
 // do relaxations, may move nodes between buckets
 template <typename T>
-void relaxRequests(const std::set<int>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
-    for (int v : requests) {
-        for (const auto& e : graph.get_adjacent(v)) {
-            relax(v, e.dest, e.weight, dist, buckets, delta);
-        }
+void relaxRequests(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
+    for (auto req : requests) {
+        int w = req.dest;
+        T x = req.weight;
+        relax(w, x, dist, buckets, delta);
     }
 }
 
-template <typename T>
+
+int find_smallest_non_empty_bucket(const std::vector<std::list<int>>& buckets) {
+  int min_size = INT_MAX; 
+  int min_bucket = -1;
+
+  for (size_t i = 0; i < buckets.size(); ++i) {
+    if (!buckets[i].empty()) {
+      int size = buckets[i].size();
+      if (size < min_size) {
+        min_size = size;
+        min_bucket = i;
+      }
+    }
+  }
+  return min_bucket;
+}
+
+
+template <typename T>                                                        //  for reference : fig 1 p. 123 of paper 
 std::vector<T> delta_stepping(int source, const Graph<T>& graph, int delta, bool print_dist) {
     int n = graph.size();
-    std::vector<T> dist(n, INT_MAX);
+    std::vector<T> dist(n, INT_MAX);                                         // line 1 
     int b = graph.nb_buckets(delta);
-    //int b = int(ceil(INT_MAX / delta)) + 1;
     std::vector<std::list<int>> buckets(b); 
 
-    dist[source] = 0;
+    dist[source] = 0;                                                        // line 2
     buckets[0].push_back(source); // Insert source node with distance 0
 
-    for (int i = 0; i < buckets.size(); ++i) {
-        while (!buckets[i].empty()) {   
-            std::list<int> R = move(buckets[i]);
-            for (int u : R) {
-                for (const auto& e : graph.get_adjacent(u)) {
-                    relax(u, e.dest, e.weight, dist, buckets, delta);
-                }
-            }
-
-            // Relax light edges
-            // Handle reinsertion here using findRequests and relaxRequests
-            auto lightRequests = findRequests(R, graph, delta, dist, true);
-            relaxRequests(lightRequests, graph, dist, buckets, delta);
-            
-            // Relax heavy edges
-            auto heavyRequests = findRequests(R, graph, delta, dist, false);
-            relaxRequests(heavyRequests, graph, dist, buckets, delta);
-        }
+    while (true){                                                           // line 3
+        int i = find_smallest_non_empty_bucket(buckets);                    // line 4
+        if (i == -1) break;                                                 
+        std::list<int> R ;                                                  // line 5
+        while (!buckets[i].empty()) {                                       // line 6
+            std::vector<Edge<T>> lightRequests = findRequests(buckets[i], graph, delta, dist, true); // line 7
+            // move elements of buckets[i] to the end of R, empties buckets[i] : 
+            R.splice(R.end(), buckets[i])  ;                                // line 8 & 9
+            relaxRequests(lightRequests, graph, dist, buckets, delta);      // line 10
+        }        
+        // Relax heavy edges
+        std::vector<Edge<T>> heavyRequests = findRequests(R, graph, delta, dist, false);  // line 11
+        relaxRequests(heavyRequests, graph, dist, buckets, delta);        // line 12
     }
 
     // Print the distances
     if (print_dist){
         for (int i = 0; i < n; ++i) {
             std::cout << "Distance from " << source << " to " << i << " is ";
-            if (dist[i] == INF){
+            if (dist[i] == INT_MAX){
                 std::cout << "infinity" << std::endl;
             }
             else{
@@ -94,7 +103,7 @@ std::vector<T> delta_stepping(int source, const Graph<T>& graph, int delta, bool
     return dist;
 }
 
-
+ 
 
 
 // Deletion and edge relaxation for an entire bucket can be done in parallel and in arbitrary order 
@@ -103,47 +112,55 @@ std::vector<T> delta_stepping(int source, const Graph<T>& graph, int delta, bool
 // relaxations for a particular node are done sequentially
 // we use a mutex to ensure that updates to the distance vector and bucket lists are atomic
 template <typename T>
-void relaxPar(int u, int v, T weight, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& m) {
+void relaxPar(int u, T x, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& m) {
     std::unique_lock<std::mutex> lock(m);
-    relax(u, v, weight, dist, buckets, delta);
+    relax(u, x, dist, buckets, delta);
     lock.unlock();
 }
 
-
+template <typename T>
+void relax_chunk(int start, int end, const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& mutex) {
+    for (int i = start; i < end; ++i) {
+        auto req = requests[i];
+        int w = req.dest;
+        T x = req.weight;
+        relax(w, x, dist, buckets, delta, mutex);
+    }
+}
 
 // edge relaxation for an entire bucket can be done in parallel so we use threads
 // we use multiple threads to process the requests and a mutex to manage shared resources safely
-template <typename T>
-void relaxRequestsPar(
-    const std::set<int>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, int nb_threads){
-    std::vector<std::thread> threads; 
-    std::mutex m; // mutex for synchronizing access to shared resources (dist and buckets)
-    
-    int batchSize = requests.size() / nb_threads; // compute size of each batch of requests to be processed by each thread
 
-    auto it = requests.begin(); // iterator to access elements in the set of requests
+template <typename T>
+void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, int nb_threads) {
+    // mutex to protect concurrent access to buckets
+    std::mutex mutex;
+
+    // divide requests into chunks for each thread
+    int chunk_size = (requests.size() + nb_threads - 1) / nb_threads;
+    std::vector<std::thread> threads(nb_threads);
+
+    // Thread function to process a chunk of requests
+    auto relax_chunk = [&](int start, int end) {
+        for (int i = start; i < end; ++i) {
+        auto req = requests[i];
+        int w = req.dest;
+        T x = req.weight;
+        relaxPar(w, x, dist, buckets, delta, mutex); 
+        }
+    };
 
     for (int i = 0; i < nb_threads; ++i) {
-        // start iterator for the current thread
-        auto start = std::next(it, i * batchSize);
-        // end iterator
-        auto end = (i == nb_threads - 1) ? requests.end() : std::next(start, batchSize);
-
-        threads.emplace_back([&graph, start, end, &dist, &buckets, delta, &m](){
-            for (auto it = start; it != end; ++it) {
-                // iterate over all adjacent edges of the current node
-                for (const auto& e : graph.get_adjacent(*it)) {
-                    // perform relaxation step for current edge
-                    relaxPar(*it, e.dest, e.weight, dist, buckets, delta, m);
-                }
-            }
-        });
+        int start = i * chunk_size;
+        int end = std::min(start + chunk_size, (int)requests.size());
+        threads[i] = std::thread(relax_chunk, start, end);
     }
-    // wait for threads
-    for (auto& t : threads) {
-        t.join();
+
+    for (auto& thread : threads) {
+        thread.join();
     }
 }
+
 
 
 // Previous version for relaxRequestsPar that might work better?
@@ -170,45 +187,37 @@ void relaxRequestsPar(
 
 
 
-// Previous version that parallelize less but seems to run in less time
+// Version that parallelize less but seems to run in less time
 template <typename T>
 std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
     int n = graph.size();
-    std::vector<T> dist(n, INT_MAX);
+    std::vector<T> dist(n, INT_MAX);                                         // line 1 
     int b = graph.nb_buckets(delta);
     std::vector<std::list<int>> buckets(b); 
-    std::mutex mutex;
 
-    dist[source] = 0;
-    buckets[0].push_back(source); // insert source node with distance 0
+    dist[source] = 0;                                                        // line 2
+    buckets[0].push_back(source); // Insert source node with distance 0
 
-    for (int i = 0; i < buckets.size(); ++i) {
-        while (!buckets[i].empty()) {   
-            
-            std::list<int> R = move(buckets[i]);
-            
-            for (int u : R) {
-                for (const auto& e : graph.get_adjacent(u)) {
-                    relaxPar(u, e.dest, e.weight, dist, buckets, delta, mutex);
-                }
-            }
-
-            // Relax light edges in parallel
-            // Handle reinsertion here using findRequests and relaxRequests
-            auto lightRequests = findRequests(R, graph, delta, dist, true);
-            relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
-            
-            // Relax heavy edges in parallel
-            auto heavyRequests = findRequests(R, graph, delta, dist, false);
-            relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
-        }
+    while (true){                                                           // line 3
+        int i = find_smallest_non_empty_bucket(buckets);                    // line 4
+        if (i == -1) break;                                                 
+        std::list<int> R ;                                                  // line 5
+        while (!buckets[i].empty()) {                                       // line 6
+            std::vector<Edge<T>> lightRequests = findRequests(buckets[i], graph, delta, dist, true); // line 7
+            // move elements of buckets[i] to the end of R, empties buckets[i] : 
+            R.splice(R.end(), buckets[i])  ;                                // line 8 & 9
+            relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);      // line 10
+        }        
+        // Relax heavy edges
+        std::vector<Edge<T>> heavyRequests = findRequests(R, graph, delta, dist, false);  // line 11
+        relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);        // line 12
     }
 
     // Print the distances
     if (print_dist){
         for (int i = 0; i < n; ++i) {
             std::cout << "Distance from " << source << " to " << i << " is ";
-            if (dist[i] == INF){
+            if (dist[i] == INT_MAX){
                 std::cout << "infinity" << std::endl;
             }
             else{

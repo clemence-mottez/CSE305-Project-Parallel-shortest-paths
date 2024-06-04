@@ -187,7 +187,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 // Then:
 // For testing an existing small graph
 // ./test 0 [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph] 
-// ./test 0 1 0 5 6 1 1
+// ./test 0 0 0 5 6 1 1
 
 // For testing a graph from a txt file
 // ./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]

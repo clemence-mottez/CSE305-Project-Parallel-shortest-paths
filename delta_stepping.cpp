@@ -118,15 +118,7 @@ void relaxPar(int u, T x, std::vector<T>& dist, std::vector<std::list<int>>& buc
     lock.unlock();
 }
 
-template <typename T>
-void relax_chunk(int start, int end, const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& mutex) {
-    for (int i = start; i < end; ++i) {
-        auto req = requests[i];
-        int w = req.dest;
-        T x = req.weight;
-        relax(w, x, dist, buckets, delta, mutex);
-    }
-}
+
 
 // edge relaxation for an entire bucket can be done in parallel so we use threads
 // we use multiple threads to process the requests and a mutex to manage shared resources safely

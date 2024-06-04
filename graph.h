@@ -244,9 +244,23 @@ public:
         add_edge(5, 2, 2.3);
         add_edge(5, 0, 6.);
     }
+    
+    void gen_random_graph(int type_weight, int num_vertices, int num_edges, int min_weight, int max_weight) {
+        std::mt19937 rng(static_cast<unsigned int>(time(nullptr))); 
+        std::uniform_int_distribution<> vert_dist(0, num_vertices - 1);
+        std::uniform_int_distribution<> weight_dist(min_weight, max_weight);
+
+
+        for (int i = 0; i < num_edges; i++) {
+            int u = vert_dist(rng);
+            int v = vert_dist(rng);
+            T weight = weight_dist(rng);
+            add_edge(u, v, weight);
+        }
+    }
 
     
-    void gen_random_graph(int type_weight , int num_vertices, int num_edges, int min_weight, int max_weight) {
+    void gen_random_graph2(int type_weight , int num_vertices, int num_edges, int min_weight, int max_weight) {
         if (num_edges > (num_vertices * (num_vertices - 1))) {
         // Too many edges for acyclic graph
             std::cout << "Number of edges exceeds limit for acyclic graph" << std::endl;

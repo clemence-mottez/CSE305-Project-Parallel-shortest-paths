@@ -193,6 +193,7 @@ public:
     }
 
 
+
     int suggestOptimalNumberOfThreads() const {
         int numPhysicalCores = std::thread::hardware_concurrency();
         int suggestedThreads = numPhysicalCores; 
@@ -245,48 +246,61 @@ public:
         add_edge(5, 0, 6.);
     }
     
+
     void gen_random_graph(int type_weight, int num_vertices, int num_edges, int min_weight, int max_weight) {
         std::mt19937 rng(static_cast<unsigned int>(time(nullptr))); 
         std::uniform_int_distribution<> vert_dist(0, num_vertices - 1);
-        std::uniform_int_distribution<> weight_dist(min_weight, max_weight);
+        std::set<std::pair<int, int>> added_edges;
 
+        // weight distribution based on the type of weight (int or float)
+        std::uniform_real_distribution<> weight_dist_real(min_weight, max_weight);
+        std::uniform_int_distribution<> weight_dist_int(min_weight, max_weight);
+
+        for (int i = 0; i < num_edges; i++) {
+            int u, v;
+            do {
+                u = vert_dist(rng);
+                v = vert_dist(rng);
+                // ensure no self-loops and no duplicate edges in either direction
+            } while (u == v || added_edges.find(std::make_pair(u, v)) != added_edges.end() || added_edges.find(std::make_pair(v, u)) != added_edges.end());
+
+            T weight;
+            if (type_weight == 1) {
+                weight = static_cast<T>(weight_dist_real(rng));
+            } else {
+                weight = static_cast<T>(weight_dist_int(rng));
+            }
+            
+            add_edge(u, v, weight); 
+            added_edges.insert(std::make_pair(u, v));
+        }
+    }
+
+
+    // Works but basic (allow self loop and duplicate edges)
+    void gen_random_graph_basic(int type_weight, int num_vertices, int num_edges, int min_weight, int max_weight) {
+        std::mt19937 rng(static_cast<unsigned int>(time(nullptr))); 
+        std::uniform_int_distribution<> vert_dist(0, num_vertices - 1);
+        std::uniform_real_distribution<> weight_dist(min_weight, max_weight);  
+        
+        T weight; 
+        if (type_weight == 1){
+            std::uniform_real_distribution<> weight_dist(min_weight, max_weight);  //random real positive weight
+        } 
+        else {
+            std::uniform_int_distribution<> weight_dist(min_weight, max_weight); //random integer weight
+        }
+        
 
         for (int i = 0; i < num_edges; i++) {
             int u = vert_dist(rng);
             int v = vert_dist(rng);
             T weight = weight_dist(rng);
+
             add_edge(u, v, weight);
         }
     }
 
-    
-    void gen_random_graph2(int type_weight , int num_vertices, int num_edges, int min_weight, int max_weight) {
-        if (num_edges > (num_vertices * (num_vertices - 1))) {
-        // Too many edges for acyclic graph
-            std::cout << "Number of edges exceeds limit for acyclic graph" << std::endl;
-        }
-        std::set<int> visited; //set to keep track of visited nodes to avoid cycles
-
-        for (int i = 0; i < num_edges; i++) {
-        int source = std::uniform_int_distribution<int>(0, num_vertices - 1)(gen); //pick a random source
-        int target;
-
-        // finding a valid target 
-        while (visited.count(target) > 0 && source != target) {
-            target = std::uniform_int_distribution<int>(0, num_vertices - 1)(gen);
-        }
-
-        T weight; 
-        if (type_weight == 1){
-            weight = std::uniform_real_distribution<double>(min_weight, max_weight)(gen); //random real positive weight
-        } 
-        else {
-            weight = std::uniform_int_distribution<int>(min_weight, max_weight)(gen); //random integer weight
-        }
-        add_edge(source, target, weight); // adds edge to the graph
-        visited.insert(target); // marks the target node as visited
-        }
-    }
 
     void gen_graph_from_txt(std::string filename) {
         std::ifstream file(filename);

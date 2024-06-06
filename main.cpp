@@ -49,6 +49,8 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
     std::vector<T> dist_delta_stepping;
     std::vector<T> dist_delta_stepping_threads;
 
+    int new_delta = delta;
+
     // running and chronometring the algorithms: 
 
     if (run_algo == 1 || run_algo == 4 || run_algo == 5 || run_algo == 0){// Run dijkstra algo
@@ -63,8 +65,8 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
     if (run_algo == 2 || run_algo == 4 || run_algo == 6 || run_algo == 0){ // Run delta-stapping
         if (delta==1000){
-            int new_delta = 1;
-            int best_num_delta = 50;
+            new_delta = 1;
+            int best_num_delta = 100;
             while (new_delta<50){
                 std::cout << "\nResults with delta stepping algo, delta = " << new_delta << std::endl;
                 std::chrono::steady_clock::time_point begin_delta_stepping = std::chrono::steady_clock::now();
@@ -79,6 +81,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
                 std::cout << "Total time with Delta stepping: " << t2 << "  micro seconds" << std::endl;
                 new_delta += 2;
             }
+            new_delta = best_num_delta;
             std::cout << "\nBest results with delta stepping algo, best delta = " << best_num_delta << ", best time = " << best_time << std::endl;
         }
         else{
@@ -96,10 +99,10 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
             int new_num_threads = 1;
             int best_num_threads = 0;
             while (new_num_threads<50){
-                std::cout << "\nResults with delta stepping threads algo, delta = " << delta << " , nb of threads = " << new_num_threads << std::endl;
+                std::cout << "\nResults with delta stepping threads algo, delta = " << new_delta << " , nb of threads = " << new_num_threads << std::endl;
                 std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
                 // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
-                dist_delta_stepping_threads = delta_stepping_Par(0, g, delta, new_num_threads, print_dist);
+                dist_delta_stepping_threads = delta_stepping_Par(0, g, new_delta, new_num_threads, print_dist);
                 std::chrono::steady_clock::time_point end_delta_stepping_threads = std::chrono::steady_clock::now();
                 t3 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
                 if (t3 < best_time){
@@ -109,14 +112,14 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
                 std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
                 new_num_threads += 2;
             }
-            std::cout << "\nBest results with delta stepping threads algo, delta = " << delta << " , best nb of threads = " << best_num_threads << " , best time = " << best_time << std::endl;
+            std::cout << "\nBest results with delta stepping threads algo, delta = " << new_delta << " , best nb of threads = " << best_num_threads << " , best time = " << best_time << std::endl;
         }
         
         else {        
-            std::cout << "\nResults with delta stepping threads algo, delta = " << delta << " , nb of threads = " << num_threads << std::endl;
+            std::cout << "\nResults with delta stepping threads algo, delta = " << new_delta << " , nb of threads = " << num_threads << std::endl;
             std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
             // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
-            dist_delta_stepping_threads = delta_stepping_Par(0, g, delta, num_threads, print_dist);
+            dist_delta_stepping_threads = delta_stepping_Par(0, g, new_delta, num_threads, print_dist);
             std::chrono::steady_clock::time_point end_delta_stepping_threads = std::chrono::steady_clock::now();
             t3 = std::chrono::duration_cast<std::chrono::microseconds>(end_delta_stepping_threads - begin_delta_stepping_threads).count() ;
             std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
@@ -192,8 +195,8 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 // For all type of graphs
 // int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph 
 // int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all
-// int type_weight = 0 int ; 1 double (positive edge weights) 
-// int delta = 0 if want to use computed value, or = value if want a specific value
+// int type_weight = 0 int ; 1 double (positive edge weights) ; 2 not uniform distribution
+// int delta = 0 if want to use computed value, or = value if want a specific value ; or = 1000 if wants multiple value of delta testing
 // int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value, or = 1000 if wants multiple value of threads testing
 // bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably
 // bool print_graph = whether or not want to print the graph

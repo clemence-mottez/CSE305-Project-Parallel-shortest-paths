@@ -27,7 +27,6 @@
 #include <cstdlib> 
 
 
-
 std::random_device rd;
 std::mt19937 gen(rd());
 const int INF = INT_MAX;
@@ -149,8 +148,8 @@ public:
     }
 
 
-    // Find delta function
-    int findDelta() {
+    // Find delta function from Appendix A of paper 1
+    int findDelta2() {
         // Find the minimum edge weight
         T delta0 = std::numeric_limits<T>::max();
         for (const auto& list : adj_list) {
@@ -192,6 +191,51 @@ public:
         return delta;
     }
 
+    int findDelta() {
+        float delta0 = std::numeric_limits<float>::max();
+        // Find the minimum edge weight
+        for (const auto& list : adj_list) {
+            for (const auto& edge : list) {
+                if (edge.weight < delta0) {
+                    delta0 = edge.weight;
+                }
+            }
+        }
+
+        if (delta0 == std::numeric_limits<float>::max()) {
+            return 0; // No edges in the graph
+        }
+
+        std::unordered_map<int, std::unordered_map<int, float>> found;
+        bool changed = true;
+        float deltaCur = delta0;
+
+        while (changed) {
+            changed = false;
+            std::vector<std::list<std::pair<int, int>>> T_list((int)std::ceil(std::log2(deltaCur / delta0)) + 1);
+
+            for (int u = 0; u < vertices; ++u) {
+                for (const auto& edge : adj_list[u]) {
+                    int v = edge.dest;
+                    float weight = edge.weight;
+                    if (weight <= deltaCur) {
+                        int j = (int)(std::log2(weight / delta0));
+                        T_list[j].emplace_back(u, v);
+                        if (found[u].find(v) == found[u].end() || found[u][v] > weight) {
+                            found[u][v] = weight;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            deltaCur *= 2; // Double the current delta
+        }
+
+        deltaCur /= 2; // Step back to the last valid delta
+        int delta = static_cast<int>(deltaCur);
+        return delta;
+    }
 
 
     int suggestOptimalNumberOfThreads() const {
@@ -255,6 +299,11 @@ public:
         // weight distribution based on the type of weight (int or float)
         std::uniform_real_distribution<> weight_dist_real(min_weight, max_weight);
         std::uniform_int_distribution<> weight_dist_int(min_weight, max_weight);
+        
+        // or not uniform distribution
+        double mean_weight = (min_weight + max_weight) / 2.0;
+        double std_dev = 1; //(max_weight - min_weight) / 6.0; // Adjusting stddev to control spread
+        std::normal_distribution<> weight_dist(mean_weight, std_dev);
 
         for (int i = 0; i < num_edges; i++) {
             int u, v;
@@ -265,10 +314,20 @@ public:
             } while (u == v || added_edges.find(std::make_pair(u, v)) != added_edges.end() || added_edges.find(std::make_pair(v, u)) != added_edges.end());
 
             T weight;
-            if (type_weight == 1) {
-                weight = static_cast<T>(weight_dist_real(rng));
-            } else {
+            if (type_weight == 0) {
                 weight = static_cast<T>(weight_dist_int(rng));
+            } 
+            else if (type_weight == 1){
+                weight = static_cast<T>(weight_dist_real(rng));
+                }
+            else {
+                weight = static_cast<T>(weight_dist(rng));
+                if (weight<min_weight){
+                    weight = min_weight;
+                }
+                if (weight>max_weight){
+                    weight = max_weight;
+                }
             }
             
             add_edge(u, v, weight); 

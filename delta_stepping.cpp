@@ -1,6 +1,7 @@
 
 #include "graph.h"
 
+
 // relax node u with new dist x
 template <typename T>
 void relax(int w, T x, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta) {
@@ -125,19 +126,51 @@ std::vector<T> delta_stepping(int source, const Graph<T>& graph, int delta, bool
 
 // we use a mutex to ensure that updates to the distance vector and bucket lists are atomic
 template <typename T>
-void relaxPar(int u, T x, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& m) {
+void relaxPar2(int u, T x, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& m) {
     std::unique_lock<std::mutex> lock(m);
     relax(u, x, dist, buckets, delta);
     lock.unlock();
 }
 
-
+// Instead of locking for each individual request, process multiple 
+// requests at once within a single locked section to reduce the 
+// overhead of acquiring and releasing locks.
+template <typename T>
+void relaxPar(int start, int end, const std::vector<Edge<T>>& requests, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, std::mutex& m) {
+    std::unique_lock<std::mutex> lock(m);
+    for (int i = start; i < end; ++i) {
+        auto req = requests[i];
+        relax(req.dest, req.weight, dist, buckets, delta);
+    }
+}
 
 // edge relaxation for an entire bucket can be done in parallel so we use threads
 // we use multiple threads to process the requests and a mutex to manage shared resources safely
-
 template <typename T>
 void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, int nb_threads) {
+    // mutex to protect concurrent access to buckets
+    std::mutex mutex;
+
+    // divide requests into chunks for each thread
+    int chunk_size = (requests.size() + nb_threads - 1) / nb_threads;
+    std::vector<std::thread> threads(nb_threads);
+
+    for (int i = 0; i < nb_threads; ++i) {
+        int start = i * chunk_size;
+        int end = std::min(start + chunk_size, (int)requests.size());
+        threads[i] = std::thread(&relaxPar<T>, start, end, std::cref(requests), std::ref(dist), std::ref(buckets), delta, std::ref(mutex));
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
+/*
+// edge relaxation for an entire bucket can be done in parallel so we use threads
+// we use multiple threads to process the requests and a mutex to manage shared resources safely
+template <typename T>
+void relaxRequestsPar2(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, int nb_threads) {
     // mutex to protect concurrent access to buckets
     std::mutex mutex;
 
@@ -168,9 +201,8 @@ void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& grap
 }
 
 
-
 template <typename T>
-std::vector<Edge<T>> findRequestsPar(const std::list<int>& Vprime, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight, int nb_threads) {
+std::vector<Edge<T>> findRequestsPar2(const std::list<int>& Vprime, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight, int nb_threads) {
     
     std::vector<Edge<T>> requests;
     std::mutex mutex;
@@ -208,28 +240,44 @@ std::vector<Edge<T>> findRequestsPar(const std::list<int>& Vprime, const Graph<T
     return requests;
 }
 
+*/
+template <typename T>
+void findRequestsChunk(int start, int end, const Graph<T>& graph, const std::vector<T>& dist, int delta, bool isLight, std::vector<Edge<T>>& local_requests, const std::list<int>& Vprime) {
+    for (int i = start; i < end; ++i) {
+        auto it = std::next(Vprime.begin(), i);
+        for (const auto& e : graph.get_adjacent(*it)) {
+            if ((isLight && e.weight <= delta) || (!isLight && e.weight > delta)) {
+                local_requests.emplace_back(e.dest, dist[*it] + e.weight);
+            }
+        }
+    }
+}
 
+template <typename T>
+std::vector<Edge<T>> findRequestsPar(const std::list<int>& Vprime, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight, int nb_threads) {
+    std::vector<Edge<T>> requests;
+    std::mutex mutex;
+    size_t chunk_size = (Vprime.size() + nb_threads - 1) / nb_threads;
+    std::vector<std::vector<Edge<T>>> thread_requests(nb_threads);
 
-// Previous version for relaxRequestsPar
-// ONE THREAD PER REQUEST TO RELAX : OK FOR SMALL GRAPHS BUT OTHERWIZE TOO LONG
-// edge relaxation for an entire bucket can be done in parallel so we use threads
-// template <typename T>
-// void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta, int nb_threads) {
-//     std::vector<std::thread> threads;
-//     std::mutex mutex;
-//     for (auto req : requests) {
-//         threads.push_back(std::thread([&, req]() {
-//             relaxPar(req.dest, req.weight, dist, buckets, delta, mutex);
-//         }));
-//     }
-    
-//     // wait for threads
-//     for (std::thread& t : threads) {
-//         if (t.joinable()) {
-//             t.join();
-//         }
-//     }
-// }
+    std::vector<std::thread> threads(nb_threads);
+    for (int i = 0; i < nb_threads; ++i) {
+        int start = i * chunk_size;
+        int end = std::min((int)(start + chunk_size), (int)Vprime.size());
+        threads[i] = std::thread(findRequestsChunk<T>, start, end, std::cref(graph), std::cref(dist), delta, isLight, std::ref(thread_requests[i]), std::cref(Vprime));
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    std::unique_lock<std::mutex> lock(mutex);
+    for (auto& local_req : thread_requests) {
+        requests.insert(requests.end(), local_req.begin(), local_req.end());
+    }
+
+    return requests;
+}
 
 
 
@@ -279,7 +327,7 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
     return dist;
 }
 
-
+// More parallelize but takes more time to work
 // Ta nouvelle version Garance
 template <typename T>
 std::vector<T> delta_stepping_Par2(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
@@ -326,74 +374,6 @@ std::vector<T> delta_stepping_Par2(int source, const Graph<T>& graph, int delta,
     return dist;
 }
 
-
-// // More parallelize but takes more time to work
-// template <typename T>
-// std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
-//     int n = graph.size();
-//     std::vector<T> dist(n, INT_MAX);
-//     int b = graph.nb_buckets(delta);
-//     std::vector<std::list<int>> buckets(b); 
-//     std::mutex mutex;
-
-//     dist[source] = 0;
-//     buckets[0].push_back(source); // insert source node with distance 0
-
-//     for (int i = 0; i < buckets.size(); ++i) {
-//         while (!buckets[i].empty()) {
-            
-//             std::list<int> R = move(buckets[i]);
-
-//             std::vector<std::thread> threads;
-//             auto start_iter = R.begin();
-
-//             int num_nodes_per_thread = R.size() / nb_threads;
-//             int remainder = R.size() % nb_threads;
-
-//             for (int t = 0; t < nb_threads; ++t) {
-//                 int num_nodes_this_thread = num_nodes_per_thread + (t < remainder ? 1 : 0);
-//                 auto end_iter = std::next(start_iter, num_nodes_this_thread);
-
-//                 threads.emplace_back([&graph, &dist, &buckets, &mutex, delta, start_iter, end_iter]() {
-//                     for (auto it = start_iter; it != end_iter; ++it) {
-//                         int u = *it;
-//                         for (const auto& e : graph.get_adjacent(u)) {
-//                             relaxPar(u, e.dest, e.weight, dist, buckets, delta, mutex);
-//                         }
-//                     }
-//                 });
-
-//                 start_iter = end_iter;
-//             }
-
-//             for (auto& thread : threads) {
-//                 thread.join();
-//             }
-
-//             // Relax light edges in parallel
-//             auto lightRequests = findRequests(R, graph, delta, dist, true);
-//             relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
-            
-//             // Relax heavy edges in parallel
-//             auto heavyRequests = findRequests(R, graph, delta, dist, false);
-//             relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
-//         }
-//     }
-
-//     // Print the distances
-//     if (print_dist){
-//         for (int i = 0; i < n; ++i) {
-//             std::cout << "Distance from " << source << " to " << i << " is ";
-//             if (dist[i] == INT_MAX) {
-//                 std::cout << "infinity" << std::endl;
-//             } else {
-//                 std::cout << dist[i] << std::endl;
-//             }
-//         }
-//     }
-
-//     return dist;
-// }
 
 //______________________________________________________________________________________________________________________________
 

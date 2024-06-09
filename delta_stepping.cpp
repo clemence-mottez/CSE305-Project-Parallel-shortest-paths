@@ -2,6 +2,9 @@
 #include "graph.h"
 
 
+
+
+
 // relax node u with new dist x
 template <typename T>
 void relax(int w, T x, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta) {
@@ -140,7 +143,7 @@ void relaxPar2(int u, T x, std::vector<T>& dist, std::vector<std::deque<int>>& b
 // edge relaxation for an entire bucket can be done in parallel so we use threads
 // we use multiple threads to process the requests and a mutex to manage shared resources safely
 template <typename T>
-void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, int nb_threads) {
+void relaxRequestsPar2(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, int nb_threads) {
     // mutex to protect concurrent access to buckets
     std::mutex mutex;
 
@@ -154,7 +157,7 @@ void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& grap
             auto req = requests[i];
             int w = req.dest;
             T x = req.weight;
-            relaxPar2(w, x, dist, buckets, delta, mutex); 
+            relaxPar(w, x, dist, buckets, delta, mutex); 
         }
     };
 
@@ -170,6 +173,61 @@ void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& grap
     }
 }
 
+
+
+// Dans l'idée le code avec fine grained locking devrait ressembler à ca mais il crash pour certains graphs à cause de la taille de std::vector<std::mutex> node_mutexes
+
+// Deletion and edge relaxation for an entire bucket can be done in parallel and in arbitrary order
+// as long as an individual relaxation is atomic, i.e., the relaxations for a particular node are done sequentially
+
+// We use a mutex for each node to ensure that updates to the distance vector and bucket lists are atomic
+
+
+template <typename T>
+void relaxPar(int u, T x, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, std::vector<std::mutex>& node_mutexes) {
+    int bucketIdx = static_cast<int>(x / delta);
+    if (bucketIdx < 0 || bucketIdx >= node_mutexes.size()) {
+        std::cout<<"mismatch"<<std::endl;
+        // std::lock_guard<std::mutex> lock(node_mutexes);
+        // node_mutexes.emplace_back();
+        return;
+
+    }
+    std::lock_guard<std::mutex> lock(node_mutexes[bucketIdx]);
+    relax(u, x, dist, buckets, delta);
+}
+
+// Edge relaxation for an entire bucket can be done in parallel, so we use threads
+// We use multiple threads to process the requests and a mutex for each node to manage shared resources safely
+template <typename T>
+void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, int nb_threads) {
+    // Vector of mutexes, one for each node
+    std::vector<std::mutex> node_mutexes(graph.size()*buckets.size());
+
+    // Divide requests into chunks for each thread
+    int chunk_size = (requests.size() + nb_threads - 1) / nb_threads;
+    std::vector<std::thread> threads(nb_threads);
+
+    // Thread function to process a chunk of requests
+    auto relax_chunk = [&](int start, int end) {
+        for (int i = start; i < end; ++i) {
+            auto req = requests[i];
+            int w = req.dest;
+            T x = req.weight;
+            relaxPar(w, x, dist, buckets, delta, node_mutexes);
+        }
+    };
+
+    for (int i = 0; i < nb_threads; ++i) {
+        int start = i * chunk_size;
+        int end = std::min(start + chunk_size, (int)requests.size());
+        threads[i] = std::thread(relax_chunk, start, end);
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
 
 template <typename T>
 std::vector<Edge<T>> findRequestsPar(const std::deque<int>& Vprime, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight, int nb_threads) {
@@ -213,6 +271,7 @@ std::vector<Edge<T>> findRequestsPar(const std::deque<int>& Vprime, const Graph<
 
     return requests;
 }
+
 
 
 template <typename T>

@@ -473,3 +473,190 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
 
 //     return dist;
 // }
+
+
+
+// _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+
+// Failed attempt to implement a static workload assignment where the nodes
+//are assigned to threads at the beginning of the algorithm and
+//only the assigned thread can relax edges leading to a node
+// for reference, see pseudocode of Algorithm 1 of paper " Engineering a Parallel Δ-stepping Algorithm"
+// loop 1 works, crashes during loop 2 
+
+
+// int find_sneb(const std::vector<std::list<int>>& buckets) {
+//   int min_size = INT_MAX; 
+//   int min_bucket = -1;
+
+//   for (size_t i = 0; i < buckets.size(); ++i) {
+//     if (!buckets[i].empty()) {
+//       int size = buckets[i].size();
+//       if (size < min_size) {
+//         min_size = size;
+//         min_bucket = i;
+//       }
+//     }
+//   }
+//   return min_bucket;
+// }
+
+
+// template <typename T>
+// void relaxReq(const std::vector<Edge2<T>>& requests, const Graph<T>& graph, const std::vector<T>& dist, const std::vector<std::list<int>>& buckets, int delta) {
+//     //std::cout<<"relaxreq"<<std::endl;
+//     for (auto req : requests) {           
+//         int w = req.dest;
+//         T x = req.weight;
+//         relax(w, x, dist, buckets, delta); 
+//     }
+// }
+
+// template <typename T>
+// std::vector<Edge2<T>> GenReq(int v, std::vector<Edge2<T>>& R, const Graph<T>& graph, int delta, const std::vector<T>& dist, bool isLight) {
+    
+//     for (const Edge<T> e : graph.get_adjacent(v)) {        
+//         int u = e.dest; 
+//         T w = e.weight;                             
+//         if ((isLight && w <= delta) || (!isLight && w > delta)) { 
+//             Edge2<T> e(v, u, w);         
+//             R.push_back(e);                     
+//         }
+//     }
+//     return R;                                       
+// }
+
+// template <typename T>  
+// void loop1(int v, std::list<int>& bucket, std::vector<Edge2<T>>& lightRequests, std::vector<Edge2<T>>& heavyRequests, const Graph<T>& graph, int delta, const std::vector<T>& dist){
+
+//     bucket.remove(v);  // remove v from bucket
+//     lightRequests = GenReq(v, lightRequests, graph, delta, dist, true);
+//     heavyRequests = GenReq(v, heavyRequests, graph, delta, dist, false);
+
+// }
+
+
+// template <typename T>
+// void relAX(const Edge2<T>& req, std::vector<T>& dist, std::vector<std::list<int>>& buckets, int delta){
+//     int v = req.from;
+//     int u = req.dest;
+//     T w = req.weight;
+//     if (dist[v] + w < dist[u]){
+//         int i = std::floor(static_cast<int>(dist[u])/delta);
+//         int j = std::floor(static_cast<int>(dist[v]+ w)/delta);
+//         buckets[i].remove(u);
+//         buckets[j].push_back(u);
+//         dist[u] = dist[v] + w;
+//     }
+
+// }
+
+
+// template <typename T>
+// void loop2_3(const Edge2<T>& req, std::vector<std::list<int>>& buckets, std::vector<Edge2<T>>& Requests, const Graph<T>& graph, int delta, std::vector<T>& dist){
+//     Requests.erase(std::remove(Requests.begin(), Requests.end(), req), Requests.end());
+//     relAX(req, dist, buckets, delta);
+
+// }
+
+
+
+// template <typename T>                                                        
+// std::vector<T> DS_par(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
+//     int n = graph.size();
+//     std::vector<T> dist(n, INT_MAX);                                        
+//     std::vector<std::list<int>> buckets(n+1);  
+
+//     //initialize buckets
+//     for (int i = 1; i < n+1 ; i++){
+//         buckets[n].push_back(i);            // corresponds to B_inf
+//     }
+//     buckets[0].push_back(source);
+//     dist[source] = 0;   
+
+//     //(randomly: not for now) partition nodes among threads
+//     std::vector<int> thread_idx(n);
+
+//     std::vector<std::thread> threads(nb_threads);
+//     std::mutex mutex;
+//     int chunk_size = (n + nb_threads - 1) / nb_threads;
+//     for (int i=0 ; i< nb_threads ; i++){
+//         int start = i * chunk_size;
+//         int end = std::min(start + chunk_size, n);
+//         for (int j= start; j < end ; j++){
+//             thread_idx[j] = i;
+//         }
+//     }
+
+//     while (true){                                                          
+
+//         int k = find_sneb(buckets);  
+//         if (k == -1) break;                                                 
+//         std::vector<Edge2<T>> lightRequests;
+//         std::vector<Edge2<T>> heavyRequests; 
+
+//         while (!buckets[k].empty()) { 
+
+//             for (int v : buckets[k]){    // loop 1
+//                 int j = thread_idx[v];  // find thread associated to node
+//                 {
+//                     std::lock_guard<std::mutex> lock(mutex);
+//                     threads[j] = std::thread(loop1<T>, v, std::ref(buckets[k]), std::ref(lightRequests), std::ref(heavyRequests), std::ref(graph), delta, std::ref(dist));
+//                 }
+                
+//             }
+
+//             for (auto& thread : threads) {
+//                 if (thread.joinable()) {
+//                     thread.join();
+//                 }
+//             }
+
+//             std::cout << "loop 1 works" << std::endl;
+
+//             for (Edge2<T> req : lightRequests){ // loop 2
+//                 int v = req.dest;
+//                 int j = thread_idx[v]; 
+//                 std::cout << " node " << v << " ,thread " << j << std::endl;
+                
+//                 {
+//                     std::lock_guard<std::mutex> lock(mutex);
+//                     threads[j] = std::thread(loop2_3<T>, std::ref(req), std::ref(buckets), std::ref(lightRequests), std::ref(graph), delta, std::ref(dist));
+//                     std::cout << " out of thread " << std::endl;
+//                 }
+                
+//             }
+
+            
+//             for (auto& thread : threads) {
+//                 if (thread.joinable()) {
+//                     thread.join();
+//                 }
+//             }
+
+//             std::cout << "loop 2 works" << std::endl;
+ 
+//         }    
+//         for ( Edge2<T> req : heavyRequests){ // loop 3
+//             int v = req.dest;
+//             int j = thread_idx[v];
+//             {
+//                 std::lock_guard<std::mutex> lock(mutex);
+//                 threads[j] = std::thread(loop2_3<T>, std::ref(req), std::ref(buckets), std::ref(heavyRequests), std::ref(graph), delta, std::ref(dist));
+//             }
+            
+//         }
+
+//         for (auto& thread : threads) {
+//             if (thread.joinable()) {
+//                 thread.join();
+//             }
+//         }
+
+//         std::cout << "loop 3 works" << std::endl;
+
+//     }
+
+//     return dist;
+// }

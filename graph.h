@@ -39,6 +39,18 @@ struct Edge {
     Edge(int d, T w) : dest(d), weight(w) {}
 };
 
+template <typename T>
+struct Edge2 {
+    int from;
+    int dest;
+    T weight;
+
+    Edge2(int f, int d, T w) : from(f), dest(d), weight(w) {}
+
+    bool operator==(const Edge2& other) const {
+        return from == other.from && dest == other.dest && weight == other.weight;
+    }
+};
 
 // template <typename T>
 // class Graph {

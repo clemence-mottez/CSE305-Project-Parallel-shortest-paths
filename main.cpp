@@ -3,6 +3,7 @@
 
 
 
+
 // Compare distances from the 2 algorithms to check is they match
 template <typename T>
 void compare_distances(const std::vector<T>& dist1, const std::vector<T>& dist2) {
@@ -98,7 +99,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         if (num_threads == 1000){
             int new_num_threads = 1;
             int best_num_threads = 0;
-            while (new_num_threads<50){
+            while (new_num_threads<10){
                 std::cout << "\nResults with delta stepping threads algo, delta = " << new_delta << " , nb of threads = " << new_num_threads << std::endl;
                 std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
                 // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
@@ -110,7 +111,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
                     best_num_threads = new_num_threads;
                 }
                 std::cout << "Total time with Delta stepping threads: " << t3 << "  micro seconds" << std::endl;
-                new_num_threads += 2;
+                new_num_threads += 1;
             }
             std::cout << "\nBest results with delta stepping threads algo, delta = " << new_delta << " , best nb of threads = " << best_num_threads << " , best time = " << best_time << std::endl;
         }

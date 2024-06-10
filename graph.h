@@ -114,6 +114,15 @@ public:
         return vertices;
     }
 
+    int nb_edges() const {
+        int totalEdges = 0;
+        for (const auto& list : adj_list) {
+            totalEdges += list.size();
+        }
+        return totalEdges;
+    }
+
+
     // computes the sufficient nb of buckets to use
     int nb_buckets(int delta) const {   
         int max_bucket = 0;

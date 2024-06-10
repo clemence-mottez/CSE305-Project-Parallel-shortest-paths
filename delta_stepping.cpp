@@ -125,25 +125,18 @@ std::vector<T> delta_stepping(int source, const Graph<T>& graph, int delta, bool
 }
 
 
-
-
-// Deletion and edge relaxation for an entire bucket can be done in parallel and in arbitrary order 
-// as long as an individual relaxation is atomic, i.e., the relaxations for a particular node are done sequentially
-
 // we use a mutex to ensure that updates to the distance vector and bucket lists are atomic
 template <typename T>
-void relaxPar2(int u, T x, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, std::mutex& m) {
+void relaxPar(int u, T x, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, std::mutex& m) {
     std::lock_guard<std::mutex> lock(m);
     relax(u, x, dist, buckets, delta);
 }
 
 
-
-
 // edge relaxation for an entire bucket can be done in parallel so we use threads
 // we use multiple threads to process the requests and a mutex to manage shared resources safely
 template <typename T>
-void relaxRequestsPar2(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, int nb_threads) {
+void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, int nb_threads) {
     // mutex to protect concurrent access to buckets
     std::mutex mutex;
 
@@ -174,34 +167,25 @@ void relaxRequestsPar2(const std::vector<Edge<T>>& requests, const Graph<T>& gra
 }
 
 
-
-// Dans l'idée le code avec fine grained locking devrait ressembler à ca mais il crash pour certains graphs à cause de la taille de std::vector<std::mutex> node_mutexes
-
-// Deletion and edge relaxation for an entire bucket can be done in parallel and in arbitrary order
-// as long as an individual relaxation is atomic, i.e., the relaxations for a particular node are done sequentially
-
-// We use a mutex for each node to ensure that updates to the distance vector and bucket lists are atomic
-
-
+// Better but crashes for some sizes or some delta
+// The program crashes because of the size of the node_mutexes
+// The problem is that if we allocate too much mutexes to it, it slows down a lot, and if we don't allocate enough it crashes
 template <typename T>
-void relaxPar(int u, T x, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, std::vector<std::mutex>& node_mutexes) {
-    int bucketIdx = static_cast<int>(x / delta);
+void relaxPar2(int u, T x, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, std::vector<std::mutex>& node_mutexes) {
+    int bucketIdx = static_cast<int>(x / delta); // Calculate which bucket/mutex to use
+
     if (bucketIdx < 0 || bucketIdx >= node_mutexes.size()) {
-        std::cout<<"mismatch"<<std::endl;
-        // std::lock_guard<std::mutex> lock(node_mutexes);
-        // node_mutexes.emplace_back();
-        return;
-
+        std::cerr << "Error: bucketIdx out of range: " << bucketIdx << std::endl;
+        return; 
     }
-    std::lock_guard<std::mutex> lock(node_mutexes[bucketIdx]);
-    relax(u, x, dist, buckets, delta);
-}
 
-// Edge relaxation for an entire bucket can be done in parallel, so we use threads
-// We use multiple threads to process the requests and a mutex for each node to manage shared resources safely
+    std::lock_guard<std::mutex> lock(node_mutexes[bucketIdx]); // Lock the specific mutex
+    relax(u, x, dist, buckets, delta); // Protected operation
+}
 template <typename T>
-void relaxRequestsPar(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, int nb_threads) {
-    // Vector of mutexes, one for each node
+void relaxRequestsPar2(const std::vector<Edge<T>>& requests, const Graph<T>& graph, std::vector<T>& dist, std::vector<std::deque<int>>& buckets, int delta, int nb_threads) {
+    // The program crashes because of the size of the node_mutexes
+    // The problem is that if we allocate too much mutexes to it, it slows down a lot, and if we don't allocate enough it crashes
     std::vector<std::mutex> node_mutexes(graph.size()*buckets.size());
 
     // Divide requests into chunks for each thread
@@ -277,41 +261,102 @@ std::vector<Edge<T>> findRequestsPar(const std::deque<int>& Vprime, const Graph<
 template <typename T>
 std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
     int n = graph.size();
-    std::vector<T> dist(n, INT_MAX);                                         // line 1 
+    std::vector<T> dist(n, INT_MAX);
     int b = graph.nb_buckets(delta);
-    std::vector<std::deque<int>> buckets(b); 
+    std::vector<std::deque<int>> buckets(b);
 
-    dist[source] = 0;                                                       // line 2
-    buckets[0].push_back(source); // Insert source node with distance 0
+    dist[source] = 0;
+    buckets[0].push_back(source);
 
-    while (true){                                                           // line 3
-        int i = find_smallest_non_empty_bucket(buckets);                    // line 4
-        if (i == -1) break;                                                 
-        std::deque<int> R;                                             // line 5
-        while (!buckets[i].empty()) {                                       // line 6
-            // std::vector<Edge<T>> lightRequests = findRequests(buckets[i], graph, delta, dist, true); 
-            std::vector<Edge<T>> lightRequests = findRequestsPar(buckets[i], graph, delta, dist, true, nb_threads); // line 7
+    std::vector<Edge<T>> lightRequests;
+    std::vector<Edge<T>> heavyRequests;
+    int new_nb_thread = 0;
+
+    while (true) {
+        int i = find_smallest_non_empty_bucket(buckets);
+        if (i == -1) break;
+
+        std::deque<int> R;
+        while (!buckets[i].empty()) {
+            if ((int)buckets[i].size() > 10 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+                new_nb_thread = std::min((int)buckets[i].size(), nb_threads);
+
+                lightRequests = findRequestsPar(buckets[i], graph, delta, dist, true, new_nb_thread);
+                R.insert(R.end(), std::make_move_iterator(buckets[i].begin()), std::make_move_iterator(buckets[i].end()));
+                buckets[i].clear();
             
-            // move elements of buckets[i] to the end of R, empties buckets[i] :   
-            R.insert(R.end(), std::make_move_iterator(buckets[i].begin()), std::make_move_iterator(buckets[i].end()));
-            buckets[i].clear();                             // line 8 & 9
-            relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);      // line 10
-        }        
-        // Relax heavy edges
-        // std::vector<Edge<T>> heavyRequests = findRequests(R, graph, delta, dist, false); 
-        std::vector<Edge<T>> heavyRequests = findRequestsPar(R, graph, delta, dist, false, nb_threads);  // line 11
-        
-        relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);        // line 12
+                if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+                    // new_nb_thread = (int)buckets.size();
+                    relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
+                }
+                else if ((int)buckets.size() <= 2){ 
+                    relaxRequests(lightRequests, graph, dist, buckets, delta);
+                }
+                else {
+                    new_nb_thread = (int)buckets.size();
+                    relaxRequestsPar(lightRequests, graph, dist, buckets, delta,  new_nb_thread);      // line 10 : relaxRequests(Req)
+                }
+            }
+            else {
+                //std::cout << "here" <<std::endl;
+                lightRequests = findRequests(buckets[i], graph, delta, dist, true); // line 7 : Req := findRequests(B[i], light)
+                // move elements of buckets[i] to the end of R, empties buckets[i] : 
+                R.insert(R.end(), std::make_move_iterator(buckets[i].begin()), std::make_move_iterator(buckets[i].end()));
+                buckets[i].clear();                             // line 8 & 9 : R := R ∪ B[i], B[i] := ∅
+                
+                if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+                    // new_nb_thread = (int)buckets.size();
+                    relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
+                }
+                else if ((int)buckets.size() <= 2){ 
+                    relaxRequests(lightRequests, graph, dist, buckets, delta);
+                }
+                else {
+                    new_nb_thread = (int)buckets.size();
+                    relaxRequestsPar(lightRequests, graph, dist, buckets, delta,  new_nb_thread);      // line 10 : relaxRequests(Req)
+                }
+            }
+            
+        }
+
+        if ((int)R.size() > 10 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+            new_nb_thread = std::min((int)R.size(), nb_threads);
+            heavyRequests = findRequestsPar(R, graph, delta, dist, false, nb_threads);
+
+            if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+                relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
+            }
+            else if ((int)buckets.size() <= 2){ 
+                    relaxRequests(heavyRequests, graph, dist, buckets, delta);
+                }
+            else {
+                new_nb_thread = (int)buckets.size();
+                relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, new_nb_thread);
+            }
+        }
+        else {
+            heavyRequests = findRequests(R, graph, delta, dist, false);
+
+            if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+                // new_nb_thread = (int)buckets.size();
+                relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
+            }
+            else if ((int)buckets.size() <= 2){ 
+                    relaxRequests(heavyRequests, graph, dist, buckets, delta);
+                }
+            else {
+                new_nb_thread = (int)buckets.size();
+                relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, new_nb_thread);
+            }
+        }       
     }
 
-    // Print the distances
-    if (print_dist){
+    if (print_dist) {
         for (int i = 0; i < n; ++i) {
             std::cout << "Distance from " << source << " to " << i << " is ";
-            if (dist[i] == INT_MAX){
+            if (dist[i] == INT_MAX) {
                 std::cout << "infinity" << std::endl;
-            }
-            else{
+            } else {
                 std::cout << dist[i] << std::endl;
             }
         }
@@ -319,5 +364,112 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
 
     return dist;
 }
-//______________________________________________________________________________________________________________________________
 
+
+
+// template <typename T>
+// std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, int nb_threads, bool print_dist) {
+//     int n = graph.size();
+//     std::vector<T> dist(n, INT_MAX);
+//     int b = graph.nb_buckets(delta);
+//     std::vector<std::deque<int>> buckets(b);
+
+//     dist[source] = 0;
+//     buckets[0].push_back(source);
+
+//     std::vector<Edge<T>> lightRequests;
+//     std::vector<Edge<T>> heavyRequests;
+//     int new_nb_thread = 0;
+
+//     while (true) {
+//         int i = find_smallest_non_empty_bucket(buckets);
+//         if (i == -1) break;
+
+//         std::deque<int> R;
+//         while (!buckets[i].empty()) {
+//             if ((int)buckets[i].size() > 10 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+//                 new_nb_thread = std::min((int)buckets[i].size(), nb_threads);
+
+//                 lightRequests = findRequestsPar(buckets[i], graph, delta, dist, true, new_nb_thread);
+//                 R.insert(R.end(), std::make_move_iterator(buckets[i].begin()), std::make_move_iterator(buckets[i].end()));
+//                 buckets[i].clear();
+            
+//                 if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+//                     // new_nb_thread = (int)buckets.size();
+//                     relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
+//                 }
+//                 else if ((int)buckets.size() <= 2){ 
+//                     relaxRequests(lightRequests, graph, dist, buckets, delta);
+//                 }
+//                 else {
+//                     new_nb_thread = (int)buckets.size();
+//                     relaxRequestsPar(lightRequests, graph, dist, buckets, delta,  new_nb_thread);      // line 10 : relaxRequests(Req)
+//                 }
+//             }
+//             else {
+//                 //std::cout << "here" <<std::endl;
+//                 lightRequests = findRequests(buckets[i], graph, delta, dist, true); // line 7 : Req := findRequests(B[i], light)
+//                 // move elements of buckets[i] to the end of R, empties buckets[i] : 
+//                 R.insert(R.end(), std::make_move_iterator(buckets[i].begin()), std::make_move_iterator(buckets[i].end()));
+//                 buckets[i].clear();                             // line 8 & 9 : R := R ∪ B[i], B[i] := ∅
+                
+//                 if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+//                     // new_nb_thread = (int)buckets.size();
+//                     relaxRequestsPar(lightRequests, graph, dist, buckets, delta, nb_threads);
+//                 }
+//                 else if ((int)buckets.size() <= 2){ 
+//                     relaxRequests(lightRequests, graph, dist, buckets, delta);
+//                 }
+//                 else {
+//                     new_nb_thread = (int)buckets.size();
+//                     relaxRequestsPar(lightRequests, graph, dist, buckets, delta,  new_nb_thread);      // line 10 : relaxRequests(Req)
+//                 }
+//             }
+            
+//         }
+
+//         if ((int)R.size() > 10 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+//             new_nb_thread = std::min((int)R.size(), nb_threads);
+//             heavyRequests = findRequestsPar(R, graph, delta, dist, false, nb_threads);
+
+//             if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+//                 relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
+//             }
+//             else if ((int)buckets.size() <= 2){ 
+//                     relaxRequests(heavyRequests, graph, dist, buckets, delta);
+//                 }
+//             else {
+//                 new_nb_thread = (int)buckets.size();
+//                 relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, new_nb_thread);
+//             }
+//         }
+//         else {
+//             heavyRequests = findRequests(R, graph, delta, dist, false);
+
+//             if ((int)buckets.size() >= nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+//                 // new_nb_thread = (int)buckets.size();
+//                 relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, nb_threads);
+//             }
+//             else if ((int)buckets.size() <= 2){ 
+//                     relaxRequests(heavyRequests, graph, dist, buckets, delta);
+//                 }
+//             else {
+//                 new_nb_thread = (int)buckets.size();
+//                 relaxRequestsPar(heavyRequests, graph, dist, buckets, delta, new_nb_thread);
+//             }
+//         }       
+//     }
+
+//     if (print_dist) {
+//         for (int i = 0; i < n; ++i) {
+//             std::cout << "Distance from " << source << " to " << i << " is ";
+//             if (dist[i] == INT_MAX) {
+//                 std::cout << "infinity" << std::endl;
+//             } else {
+//                 std::cout << dist[i] << std::endl;
+//             }
+//         }
+//     }
+
+//     return dist;
+// }

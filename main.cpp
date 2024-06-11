@@ -99,7 +99,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
         if (num_threads == 1000){
             int new_num_threads = 1;
             int best_num_threads = 0;
-            while (new_num_threads<10){
+            while (new_num_threads<25){
                 std::cout << "\nResults with delta stepping threads algo, delta = " << new_delta << " , nb of threads = " << new_num_threads << std::endl;
                 std::chrono::steady_clock::time_point begin_delta_stepping_threads = std::chrono::steady_clock::now();
                 // dist_delta_stepping_threads = delta_stepping_parallel(0, g, delta, num_threads, print_dist);
@@ -218,6 +218,7 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 
 
 
+
 // Examples to run:
 
 // First run: g++ main.cpp -o test
@@ -225,15 +226,15 @@ int continue_main(Graph<T> g, int run_algo, int delta, int print_graph, int prin
 // Then:
 // For testing an existing small graph
 // ./test 0 [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph] 
-// ./test 0 0 0 5 6 1 1
+// ./test 0 0 0 32 6 1 1
 
 // For testing a graph from a txt file
 // ./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 1 ./txt_graphs/txt_graph_1000.txt 1000 0 0 0 0 0 0
+// ./test 1 ./txt_graphs/txt_graph_1000.txt 1000 0 0 0 1000 0 0
 
 // For testing a random graph
 // ./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]
-// ./test 2 1000 10000 1 50 0 1 0 0 0 0
+// ./test 2 5000 500000 1 5 0 0 0 0 0 0
 
 
 

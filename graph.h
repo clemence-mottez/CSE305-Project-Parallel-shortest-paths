@@ -52,29 +52,6 @@ struct Edge2 {
     }
 };
 
-// template <typename T>
-// class Graph {
-// private:
-//     int vertices;
-//     std::vector<std::list<Edge<T>>> adj_list;
-//     int avgDegree;
-//     void computeAverageDegree();
-
-// public:
-//     Graph(int n);
-//     int size() const;
-//     int nb_buckets(int delta) const;
-//     const std::list<Edge<T>>& get_adjacent(int u) const;
-//     void add_edge(int u, int v, T weight);
-//     void print_graph() const;
-//     void gen_small_graph_int();
-//     void gen_small_graph_real();
-//     void gen_random_graph(int type_weight, int num_vertices, int num_edges, int min_weight, int max_weight);
-//     void gen_graph_from_txt(const std::string& filename);
-//     int suggestOptimalNumberOfThreads() const;
-//     int findDelta();
-// };
-
 // Custom hash function for pairs
 struct pair_hash {
     template <class T1, class T2>
@@ -211,52 +188,6 @@ public:
         int delta = static_cast<int>(deltaCur);
         return delta;
     }
-
-    // int findDelta() {
-    //     float delta0 = std::numeric_limits<float>::max();
-    //     // Find the minimum edge weight
-    //     for (const auto& list : adj_list) {
-    //         for (const auto& edge : list) {
-    //             if (edge.weight < delta0) {
-    //                 delta0 = edge.weight;
-    //             }
-    //         }
-    //     }
-
-    //     if (delta0 == std::numeric_limits<float>::max()) {
-    //         return 0; // No edges in the graph
-    //     }
-
-    //     std::unordered_map<int, std::unordered_map<int, float>> found;
-    //     bool changed = true;
-    //     float deltaCur = delta0;
-
-    //     while (changed) {
-    //         changed = false;
-    //         std::vector<std::list<std::pair<int, int>>> T_list((int)std::ceil(std::log2(deltaCur / delta0)) + 1);
-
-    //         for (int u = 0; u < vertices; ++u) {
-    //             for (const auto& edge : adj_list[u]) {
-    //                 int v = edge.dest;
-    //                 float weight = edge.weight;
-    //                 if (weight <= deltaCur) {
-    //                     int j = (int)(std::log2(weight / delta0));
-    //                     T_list[j].emplace_back(u, v);
-    //                     if (found[u].find(v) == found[u].end() || found[u][v] > weight) {
-    //                         found[u][v] = weight;
-    //                         changed = true;
-    //                     }
-    //                 }
-    //             }
-    //         }
-
-    //         deltaCur *= 2; // Double the current delta
-    //     }
-
-    //     deltaCur /= 2; // Step back to the last valid delta
-    //     int delta = static_cast<int>(deltaCur);
-    //     return delta;
-    // }
 
 
     int suggestOptimalNumberOfThreads() const {

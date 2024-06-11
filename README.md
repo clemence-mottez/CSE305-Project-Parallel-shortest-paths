@@ -16,27 +16,27 @@ In this project, we implement and benchmark one of the most standard shortest pa
 We implement the algorithm, run it on a set of benchmarks, and compare it with non-parallel algorithms including single-thread ∆-stepping and Dijkstra.
 
 ### How to run the project
-First run: ```g++ main.cpp -o test```  
+First run: ```make```  
 
 Then run either:   
 - For testing an existing small graph  
 ```./test 0 [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 0 1 0 5 6 1 1```  
+For example you can run: ```./test 0 0 0 32 6 1 1```  
   
 - For testing a graph from a txt file  
 ```./test 1 name_of_txt_file [num_vertices] [run_algo] [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 1 ./txt_graphs/txt_graph_1000.txt 1000 0 0 0 0 0 0```  
+For example you can run: ```./test 1 ./txt_graphs/txt_graph_1000.txt 1000 0 0 0 1000 0 0```  
 
 - For testing a random graph  
 ```./test 2 [num_vertices] [num_edges] [min_weight] [max_weight] [run_algo]  [type_weight] [delta] [num_threads] [print_dist] [print_graph]```  
-For example you can run: ```./test 2 1000 10000 1 50 0 1 0 10 0 0```  
+For example you can run: ```./test 2 5000 500000 1 1 0 0 0 1000 0 0```  
   
 The different arguments are explained bellow:   
 int type_graph = 0 for small graph, 1 for txt graph, 2 for random graph     
 int run_algo = 1 dijkstra ; 2 delta-stepping ; 3 DS-threads ; 4 compare dijkstra & DS ; 5 compare dijkstra & DS threads ; 6 compare DS & DS threads ; 0 compare all    
-int type_weight = 0 int ; 1 double (positive edge weights)     
-int delta = 0 if want to use computed value, or = value if want a specific value    
-int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value,  or = 1000 if wants multiple value of threads testing   
+int type_weight = 0 int ; 1 double (positive edge weights) ; 2 not uniform distribution     
+int delta = 0 if want to use computed value, or = value if want a specific value ; or = 1000 if wants multiple value of delta testing   
+int num_threads = 0 if want to use computed value (g.suggestOptimalNumberOfThreads()), or = value if want a specific value, or = 1000 if wants multiple value of threads testing   
 bool print_dist = if want to print the resulting distances or not, it affects the running time so put 0 preferably    
 bool print_graph = whether or not want to print the graph     
 int num_threads = 0 if want to use computed value, or = value if want a specific value       
@@ -54,7 +54,7 @@ int min_weight = min weight (>0 positive weights)
 int max_weight = max weight  
 
 ### What is should give you?  
-For example when running ```./test 0 0 0 2 10 1 1``` (running on a small existing graph, all the programs, integer weights, with delta = 2, nb of threads = 10, printing the resulting distances and the graph):  
+For example when running ```./test 0 0 0 32 6 1 1``` (running on a small existing graph, all the programs, integer weights, with delta = 2, nb of threads = 10, printing the resulting distances and the graph):  
 ```
 Generating a small graph  
 Vertex 0 has edges to:  
@@ -84,32 +84,36 @@ Distance from 0 to 2 is 5
 Distance from 0 to 3 is 3  
 Distance from 0 to 4 is 6  
 Distance from 0 to 5 is infinity  
-Total time with Dijkstra: 3 ms  
+Total time with Dijkstra: 13 ms  
    
-Results with delta stepping algo, delta = 10  
+Results with delta stepping algo, delta = 32  
 Distance from 0 to 0 is 0  
 Distance from 0 to 1 is 7  
 Distance from 0 to 2 is 5  
 Distance from 0 to 3 is 3  
 Distance from 0 to 4 is 6  
 Distance from 0 to 5 is infinity  
-Total time with Delta stepping: 3 ms  
+Total time with Delta stepping: 17 ms  
   
-Results with delta stepping threads algo, delta = 2 , nb of threads = 10  
+Results with delta stepping threads algo, delta = 32 , nb of threads = 6  
 Distance from 0 to 0 is 0  
 Distance from 0 to 1 is 7  
 Distance from 0 to 2 is 5  
 Distance from 0 to 3 is 3  
 Distance from 0 to 4 is 6  
 Distance from 0 to 5 is infinity  
-Total time with Delta stepping threads: 12 ms  
+Total time with Delta stepping threads: 14 ms  
   
-Comparing Dijkstra / delta-stepping  
-Speed up: 1  
+Comparing Dijkstra / delta-stepping   
+Speed up: 0.764706  
 Number of different values: 0  
-  
+
+Comparing Dijkstra / delta-stepping threads   
+Speed up: 0.928571  
+Number of different values: 0  
+
 Comparing delta-stepping / delta-stepping threads  
-Speed up: 0.25  
+Speed up: 1.21429  
 Number of different values: 0  
 ```
 

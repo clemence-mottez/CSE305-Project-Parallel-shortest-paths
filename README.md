@@ -54,7 +54,7 @@ int min_weight = min weight (>0 positive weights)
 int max_weight = max weight  
 
 ### What is should give you?  
-For example when running ```./test 0 0 0 32 6 1 1``` (running on a small existing graph, all the programs, integer weights, with delta = 2, nb of threads = 10, printing the resulting distances and the graph):  
+For example when running ```./test 0 0 0 32 6 1 1``` (running on a small existing graph, all the programs, integer weights, with delta = 32, nb of threads = 6, printing the resulting distances and the graph):  
 ```
 Generating a small graph  
 Vertex 0 has edges to:  

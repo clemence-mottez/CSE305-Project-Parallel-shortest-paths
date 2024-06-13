@@ -229,7 +229,7 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
 
         std::deque<int> R;
         while (!buckets[i].empty()) {
-            if ((int)buckets[i].size() > 10 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+            if ((int)buckets[i].size() > 2 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
                 new_nb_thread = std::min((int)buckets[i].size(), nb_threads);
 
                 lightRequests = findRequestsPar(buckets[i], graph, delta, dist, true, new_nb_thread);
@@ -270,7 +270,7 @@ std::vector<T> delta_stepping_Par(int source, const Graph<T>& graph, int delta, 
             
         }
 
-        if ((int)R.size() > 10 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
+        if ((int)R.size() > 2 * nb_threads){ // dynamic thread count adjustment based on the size of the bucket
             new_nb_thread = std::min((int)R.size(), nb_threads);
             heavyRequests = findRequestsPar(R, graph, delta, dist, false, nb_threads);
 
